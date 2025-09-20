@@ -1,0 +1,9 @@
+ARCH: DevOps scripts follow Risk-First principles with pre-deployment checks, staged execution, and rollback capabilities. Blue-green deployment pattern ensures zero-downtime updates.
+
+RISK: Each script includes comprehensive risk assessment before critical operations. Setup checks dependencies and disk space. Deploy evaluates git status, resources, and test results. Monitor tracks real-time risks.
+
+PERF: Monitor script optimized for 2-second refresh rate with minimal overhead. Deploy uses Docker layer caching for fast builds. Setup parallelizes dependency installation where possible.
+
+TEST: Scripts include self-testing capabilities. Deploy runs full test suite before deployment. Monitor validates metric collection. Setup verifies all dependencies.
+
+EXP: Terminal-based monitoring provides tmux-friendly real-time dashboard. Colorized output enhances risk visibility. Progressive deployment stages allow interruption at any point.
