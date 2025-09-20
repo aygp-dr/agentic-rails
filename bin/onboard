@@ -1,0 +1,362 @@
+#!/usr/bin/env ruby
+# Universal onboarding script for Agentic Rails
+# Checks dependencies and guides setup across platforms
+
+require 'json'
+require 'open3'
+require 'fileutils'
+
+class AgenticRailsOnboarding
+  REQUIRED_DEPENDENCIES = {
+    ruby: { min_version: '3.3.0', check: 'ruby --version', install_hint: 'Install via rbenv/rvm/chruby' },
+    node: { min_version: '18.0.0', check: 'node --version', install_hint: 'Install Node.js 20+' },
+    postgres: { min_version: '14.0', check: 'psql --version', install_hint: 'Install PostgreSQL 15+' },
+    redis: { min_version: '6.0', check: 'redis-cli --version', install_hint: 'Install Redis 7+' },
+    git: { min_version: '2.0', check: 'git --version', install_hint: 'Install Git' }
+  }.freeze
+
+  OPTIONAL_DEPENDENCIES = {
+    docker: { check: 'docker --version', install_hint: 'Install Docker for containerized development' },
+    tmux: { check: 'tmux -V', install_hint: 'Install tmux for terminal multiplexing' },
+    make: { check: 'make --version', install_hint: 'Install make/gmake for build automation' }
+  }.freeze
+
+  def self.run
+    new.run
+  end
+
+  def initialize
+    @platform = detect_platform
+    @errors = []
+    @warnings = []
+    @success_count = 0
+  end
+
+  def run
+    print_header
+    check_platform
+    check_dependencies
+    check_environment
+    setup_project
+    print_summary
+    print_next_steps
+  rescue => e
+    puts "\n#{red('❌ Onboarding failed:')}"
+    puts "  #{e.message}"
+    puts "\nPlease address the issues above and run again."
+    exit 1
+  end
+
+  private
+
+  def print_header
+    puts "#{cyan('═' * 60)}"
+    puts cyan('    Agentic Rails - Universal Onboarding')
+    puts "#{cyan('═' * 60)}"
+    puts "\n#{white('Platform:')} #{@platform[:os]} #{@platform[:version]} (#{@platform[:arch]})"
+    puts "#{white('Package Manager:')} #{@platform[:package_manager]}"
+    puts "#{white('Time:')} #{Time.now}"
+    puts
+  end
+
+  def detect_platform
+    os = `uname -s`.strip
+    version = `uname -r`.strip
+    arch = `uname -m`.strip
+
+    package_manager = case os
+                      when 'FreeBSD' then 'pkg'
+                      when 'Darwin' then 'brew'
+                      when 'Linux'
+                        if File.exist?('/etc/debian_version')
+                          'apt'
+                        elsif File.exist?('/etc/redhat-release')
+                          'yum'
+                        elsif File.exist?('/etc/arch-release')
+                          'pacman'
+                        elsif File.exist?('/etc/alpine-release')
+                          'apk'
+                        else
+                          'unknown'
+                        end
+                      else
+                        'unknown'
+                      end
+
+    { os: os, version: version, arch: arch, package_manager: package_manager }
+  end
+
+  def check_platform
+    puts "#{blue('🔍 Checking platform compatibility...')}"
+
+    case @platform[:os]
+    when 'FreeBSD'
+      puts "  #{green('✓')} FreeBSD detected - Full support"
+      puts "  #{yellow('ℹ')} Remember to use gmake instead of make"
+      @warnings << "Use 'gmake' instead of 'make' on FreeBSD"
+    when 'Darwin'
+      puts "  #{green('✓')} macOS detected - Full support"
+      check_xcode_tools
+    when 'Linux'
+      puts "  #{green('✓')} Linux detected - Full support"
+    else
+      puts "  #{yellow('⚠')} Unknown OS: #{@platform[:os]} - Limited support"
+      @warnings << "Unknown operating system - some features may not work"
+    end
+    puts
+  end
+
+  def check_xcode_tools
+    if system('xcode-select -p > /dev/null 2>&1')
+      puts "  #{green('✓')} Xcode Command Line Tools installed"
+    else
+      puts "  #{red('✗')} Xcode Command Line Tools not found"
+      puts "    Run: xcode-select --install"
+      @errors << "Xcode Command Line Tools required on macOS"
+    end
+  end
+
+  def check_dependencies
+    puts "#{blue('🔍 Checking required dependencies...')}"
+
+    REQUIRED_DEPENDENCIES.each do |name, config|
+      check_dependency(name, config, required: true)
+    end
+
+    puts "\n#{blue('🔍 Checking optional dependencies...')}"
+
+    OPTIONAL_DEPENDENCIES.each do |name, config|
+      check_dependency(name, config, required: false)
+    end
+    puts
+  end
+
+  def check_dependency(name, config, required: true)
+    output, status = Open3.capture2(config[:check])
+
+    if status.success?
+      version = extract_version(output)
+      min_version = config[:min_version]
+
+      if min_version && version && !version_sufficient?(version, min_version)
+        puts "  #{yellow('⚠')} #{name}: v#{version} (minimum: v#{min_version})"
+        message = "#{name} version #{version} is below minimum #{min_version}"
+        required ? @errors << message : @warnings << message
+      else
+        puts "  #{green('✓')} #{name}: #{version || 'installed'}"
+        @success_count += 1
+      end
+    else
+      puts "  #{red('✗')} #{name}: not found"
+      puts "    #{config[:install_hint]}"
+      puts "    #{install_command_for(name)}" if install_command_for(name)
+      @errors << "#{name} is required but not installed" if required
+    end
+  rescue => e
+    puts "  #{red('✗')} #{name}: check failed (#{e.message})"
+    @errors << "Failed to check #{name}" if required
+  end
+
+  def extract_version(output)
+    # Extract version numbers from various formats
+    if match = output.match(/(\d+)\.(\d+)(?:\.(\d+))?/)
+      match[0]
+    end
+  end
+
+  def version_sufficient?(current, required)
+    current_parts = current.split('.').map(&:to_i)
+    required_parts = required.split('.').map(&:to_i)
+
+    current_parts.zip(required_parts).each do |c, r|
+      return false if (c || 0) < (r || 0)
+      return true if (c || 0) > (r || 0)
+    end
+    true
+  end
+
+  def install_command_for(dependency)
+    commands = {
+      'FreeBSD' => {
+        ruby: 'sudo pkg install ruby33 rubygem-bundler',
+        node: 'sudo pkg install node20 npm-node20',
+        postgres: 'sudo pkg install postgresql15-client',
+        redis: 'sudo pkg install redis',
+        docker: 'sudo pkg install docker docker-compose',
+        tmux: 'sudo pkg install tmux',
+        make: 'sudo pkg install gmake'
+      },
+      'Darwin' => {
+        ruby: 'brew install rbenv ruby-build && rbenv install 3.3.0',
+        node: 'brew install node',
+        postgres: 'brew install postgresql@15',
+        redis: 'brew install redis',
+        docker: 'Download from https://docker.com',
+        tmux: 'brew install tmux',
+        make: 'Included with Xcode'
+      },
+      'Linux' => {
+        ruby: 'sudo apt-get install ruby-full',
+        node: 'curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apt-get install nodejs',
+        postgres: 'sudo apt-get install postgresql-client',
+        redis: 'sudo apt-get install redis-server',
+        docker: 'curl -fsSL https://get.docker.com | sh',
+        tmux: 'sudo apt-get install tmux',
+        make: 'sudo apt-get install build-essential'
+      }
+    }
+
+    platform_commands = commands[@platform[:os]] || {}
+    command = platform_commands[dependency.to_sym]
+    "    #{yellow('$')} #{command}" if command
+  end
+
+  def check_environment
+    puts "#{blue('🔍 Checking environment...')}"
+
+    # Check Ruby version manager
+    ruby_manager = detect_ruby_manager
+    puts "  #{green('✓')} Ruby manager: #{ruby_manager || 'none (using system Ruby)'}"
+
+    # Check environment variables
+    env_vars = %w[RAILS_ENV DATABASE_URL REDIS_URL]
+    env_vars.each do |var|
+      if ENV[var]
+        puts "  #{green('✓')} #{var}: set"
+      else
+        puts "  #{yellow('ℹ')} #{var}: not set (will use defaults)"
+      end
+    end
+
+    # Check disk space
+    check_disk_space
+
+    # Check network connectivity
+    check_network
+    puts
+  end
+
+  def detect_ruby_manager
+    %w[rbenv rvm chruby asdf].find { |manager| system("command -v #{manager} > /dev/null 2>&1") }
+  end
+
+  def check_disk_space
+    df_output = `df -h . | tail -1`
+    if match = df_output.match(/(\d+)%/)
+      usage = match[1].to_i
+      if usage > 90
+        puts "  #{red('✗')} Disk space: #{usage}% used (low space!)"
+        @errors << "Insufficient disk space (#{usage}% used)"
+      elsif usage > 80
+        puts "  #{yellow('⚠')} Disk space: #{usage}% used"
+        @warnings << "Disk space getting full (#{usage}% used)"
+      else
+        puts "  #{green('✓')} Disk space: #{usage}% used"
+      end
+    end
+  end
+
+  def check_network
+    if system('ping -c 1 github.com > /dev/null 2>&1')
+      puts "  #{green('✓')} Network: GitHub accessible"
+    else
+      puts "  #{red('✗')} Network: Cannot reach GitHub"
+      @errors << "Cannot connect to GitHub"
+    end
+  end
+
+  def setup_project
+    return unless @errors.empty?
+
+    puts "#{blue('🚀 Setting up project...')}"
+
+    # Install Ruby dependencies
+    if File.exist?('Gemfile')
+      puts "  Installing Ruby dependencies..."
+      system('bundle install') || @warnings << "Some gems failed to install"
+    end
+
+    # Install Node dependencies
+    if File.exist?('package.json')
+      puts "  Installing Node dependencies..."
+      if File.exist?('yarn.lock')
+        system('yarn install') || @warnings << "Some npm packages failed to install"
+      else
+        system('npm install') || @warnings << "Some npm packages failed to install"
+      end
+    end
+
+    # Create .env file if missing
+    unless File.exist?('.env')
+      puts "  Creating .env file..."
+      File.write('.env', <<~ENV)
+        # Development Environment Variables
+        RAILS_ENV=development
+        DATABASE_URL=postgresql://localhost/agentic_rails_development
+        REDIS_URL=redis://localhost:6379/0
+        RISK_THRESHOLD=0.5
+        SLOW_QUERY_THRESHOLD=50
+      ENV
+      puts "    #{green('✓')} .env file created"
+    end
+
+    # Create sentinel directory
+    FileUtils.mkdir_p('.make-sentinels')
+
+    puts
+  end
+
+  def print_summary
+    puts "#{cyan('═' * 60)}"
+    puts cyan('    Onboarding Summary')
+    puts "#{cyan('═' * 60)}"
+
+    if @errors.empty?
+      puts "\n#{green('✅ All checks passed!')} (#{@success_count} items verified)"
+    else
+      puts "\n#{red('❌ Some checks failed:')}"
+      @errors.each { |error| puts "  • #{error}" }
+    end
+
+    if @warnings.any?
+      puts "\n#{yellow('⚠️  Warnings:')}"
+      @warnings.each { |warning| puts "  • #{warning}" }
+    end
+  end
+
+  def print_next_steps
+    puts "\n#{cyan('📝 Next Steps:')}"
+
+    if @errors.empty?
+      puts "\n1. Set up the database:"
+      puts "   #{yellow('$')} #{'gmake' if @platform[:os] == 'FreeBSD'}#{@platform[:os] == 'FreeBSD' ? '' : 'make'} db"
+      puts "\n2. Run tests to verify setup:"
+      puts "   #{yellow('$')} #{'gmake' if @platform[:os] == 'FreeBSD'}#{@platform[:os] == 'FreeBSD' ? '' : 'make'} test"
+      puts "\n3. Start development environment:"
+      puts "   #{yellow('$')} #{'gmake' if @platform[:os] == 'FreeBSD'}#{@platform[:os] == 'FreeBSD' ? '' : 'make'} dev"
+      puts "\nOr use Docker for isolated development:"
+      puts "   #{yellow('$')} docker-compose up"
+    else
+      puts "\n#{red('Please fix the errors above before continuing.')}"
+      puts "\nFor help, see:"
+      puts "  • README.md"
+      puts "  • docs/INSTALLATION.md"
+      puts "  • https://github.com/aygp-dr/agentic-rails/issues"
+    end
+
+    puts "\n#{green('Happy coding! 🚀')}"
+  end
+
+  # Color helpers
+  def red(text); "\e[31m#{text}\e[0m"; end
+  def green(text); "\e[32m#{text}\e[0m"; end
+  def yellow(text); "\e[33m#{text}\e[0m"; end
+  def blue(text); "\e[34m#{text}\e[0m"; end
+  def cyan(text); "\e[36m#{text}\e[0m"; end
+  def white(text); "\e[37m#{text}\e[0m"; end
+end
+
+# Run if executed directly
+if __FILE__ == $0
+  AgenticRailsOnboarding.run
+end

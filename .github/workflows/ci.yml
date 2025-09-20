@@ -1,0 +1,325 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+
+env:
+  RUBY_VERSION: '3.3.0'
+  NODE_VERSION: '20'
+  POSTGRES_VERSION: '15'
+  REDIS_VERSION: '7'
+  RAILS_ENV: test
+  CI: true
+
+jobs:
+  # === Platform Matrix Testing ===
+  test:
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        ruby: ['3.3.0', '3.3.8']
+        include:
+          # Additional specific version combinations
+          - os: ubuntu-22.04
+            ruby: '3.3.0'
+          - os: macos-13
+            ruby: '3.3.0'
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: agentic_rails_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'yarn'
+
+      - name: Install dependencies
+        run: |
+          bundle install
+          yarn install
+
+      - name: Setup database
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/agentic_rails_test
+          REDIS_URL: redis://localhost:6379/0
+        run: |
+          bundle exec rails db:create
+          bundle exec rails db:schema:load
+
+      - name: Run tests
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/agentic_rails_test
+          REDIS_URL: redis://localhost:6379/0
+        run: |
+          bundle exec rails test
+          bundle exec rails test:system HEADLESS=true
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        if: matrix.os == 'ubuntu-latest' && matrix.ruby == '3.3.0'
+        with:
+          file: ./coverage/.resultset.json
+          fail_ci_if_error: false
+
+  # === Code Quality Checks ===
+  lint:
+    name: Lint & Security
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ env.RUBY_VERSION }}
+          bundler-cache: true
+
+      - name: Install dependencies
+        run: bundle install
+
+      - name: Run RuboCop
+        run: bundle exec rubocop --parallel
+
+      - name: Run Brakeman security scan
+        run: bundle exec brakeman -q --no-pager
+
+      - name: Check for vulnerabilities
+        run: bundle exec bundler-audit check --update
+
+      - name: Run Rails Best Practices
+        run: bundle exec rails_best_practices
+
+  # === Performance Testing ===
+  performance:
+    name: Performance Benchmarks
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ env.RUBY_VERSION }}
+          bundler-cache: true
+
+      - name: Install dependencies
+        run: bundle install
+
+      - name: Setup database
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/agentic_rails_test
+          REDIS_URL: redis://localhost:6379/0
+        run: |
+          bundle exec rails db:create
+          bundle exec rails db:schema:load
+          bundle exec rails db:seed
+
+      - name: Run performance benchmarks
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/agentic_rails_test
+          REDIS_URL: redis://localhost:6379/0
+        run: |
+          bundle exec rails test:benchmark
+
+      - name: Check memory usage
+        run: |
+          bundle exec derailed bundle:mem
+          bundle exec derailed bundle:objects
+
+  # === Docker Build ===
+  docker:
+    name: Docker Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          tags: agentic-rails:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Test Docker image
+        run: |
+          docker run --rm agentic-rails:test rails --version
+          docker run --rm agentic-rails:test ruby --version
+
+  # === Progressive Commit Protocol Check ===
+  commit-protocol:
+    name: Progressive Commit Protocol
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check commit compliance
+        run: |
+          commits=$(git log --format=%H origin/${{ github.base_ref }}..HEAD)
+
+          for commit in $commits; do
+            message=$(git log -1 --format=%B $commit)
+
+            # Check for required sections
+            if ! echo "$message" | grep -q "Hypothesis:\|Results:\|Risk Assessment:"; then
+              echo "⚠️ Commit $commit may not follow Progressive Commit Protocol"
+              echo "Missing one of: Hypothesis, Results, or Risk Assessment"
+              # Don't fail, just warn
+            else
+              echo "✅ Commit $commit follows Progressive Commit Protocol"
+            fi
+          done
+
+      - name: Generate commit report
+        run: |
+          echo "## Commit Analysis Report" > commit-report.md
+          echo "" >> commit-report.md
+
+          git log --format="### %s%n%n%b%n---" origin/${{ github.base_ref }}..HEAD >> commit-report.md
+
+          echo "Report generated: commit-report.md"
+
+      - name: Comment PR with report
+        uses: actions/github-script@v7
+        if: github.event_name == 'pull_request'
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('commit-report.md', 'utf8');
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: report
+            });
+
+  # === FreeBSD Testing (Self-hosted runner) ===
+  freebsd:
+    name: FreeBSD Test
+    runs-on: [self-hosted, freebsd]
+    if: github.repository == 'aygp-dr/agentic-rails' && github.event_name == 'push'
+    continue-on-error: true
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo pkg install -y ruby33 rubygem-bundler node20 postgresql15-client redis
+
+      - name: Setup Ruby
+        run: |
+          bundle install
+
+      - name: Run tests
+        run: |
+          gmake test
+
+  # === Matrix Summary ===
+  summary:
+    name: CI Summary
+    runs-on: ubuntu-latest
+    needs: [test, lint, performance, docker]
+    if: always()
+
+    steps:
+      - name: Check status
+        run: |
+          if [[ "${{ needs.test.result }}" == "success" ]] && \
+             [[ "${{ needs.lint.result }}" == "success" ]] && \
+             [[ "${{ needs.performance.result }}" == "success" ]] && \
+             [[ "${{ needs.docker.result }}" == "success" ]]; then
+            echo "✅ All CI checks passed!"
+            exit 0
+          else
+            echo "❌ Some CI checks failed"
+            echo "Test: ${{ needs.test.result }}"
+            echo "Lint: ${{ needs.lint.result }}"
+            echo "Performance: ${{ needs.performance.result }}"
+            echo "Docker: ${{ needs.docker.result }}"
+            exit 1
+          fi
