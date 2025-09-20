@@ -50,11 +50,40 @@ Agentic Rails integrates concepts from five essential books:
 ## Quick Start
 
 ### Prerequisites
-- Ruby 3.3+
+- Ruby 3.3+ (via rbenv, rvm, chruby, or asdf)
 - PostgreSQL 15+
 - Redis 7+
 - Docker & Docker Compose
 - tmux 3.4+
+
+### Ruby Version Management
+
+The project supports multiple Ruby version managers:
+
+#### FreeBSD (Recommended: rbenv)
+```bash
+# Install rbenv and ruby-build
+sudo pkg install rbenv ruby-build
+
+# Add to shell config
+echo 'eval "$(rbenv init -)"' >> ~/.bashrc
+source ~/.bashrc
+
+# Install Ruby
+rbenv install 3.3.0
+rbenv global 3.3.0
+```
+
+#### macOS (rbenv or rvm)
+```bash
+# Using Homebrew
+brew install rbenv ruby-build
+# Or for RVM
+\curl -sSL https://get.rvm.io | bash -s stable
+```
+
+#### Linux (any manager)
+All version managers work well on Linux. Choose based on preference.
 
 ### Installation
 

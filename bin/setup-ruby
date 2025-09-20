@@ -1,0 +1,167 @@
+#!/usr/bin/env bash
+# Ruby setup script with version manager detection
+
+set -e
+
+echo "=== Ruby Environment Setup ==="
+echo "System: $(uname -s) $(uname -r) $(uname -m)"
+echo ""
+
+# Detect Ruby version manager
+detect_ruby_manager() {
+  if command -v rbenv &> /dev/null; then
+    echo "rbenv"
+  elif command -v rvm &> /dev/null; then
+    echo "rvm"
+  elif command -v chruby &> /dev/null; then
+    echo "chruby"
+  elif command -v asdf &> /dev/null && asdf plugin list | grep -q ruby; then
+    echo "asdf"
+  else
+    echo "none"
+  fi
+}
+
+RUBY_MANAGER=$(detect_ruby_manager)
+REQUIRED_RUBY="3.3.0"
+
+echo "Detected Ruby manager: $RUBY_MANAGER"
+echo "Required Ruby version: $REQUIRED_RUBY"
+echo ""
+
+case $RUBY_MANAGER in
+  rbenv)
+    echo "Using rbenv..."
+
+    # Check if ruby-build is installed
+    if ! command -v ruby-build &> /dev/null; then
+      echo "⚠️  ruby-build not found. Installing..."
+
+      case "$(uname -s)" in
+        FreeBSD)
+          echo "Installing via pkg..."
+          sudo pkg install -y ruby-build
+          ;;
+        Darwin)
+          echo "Installing via Homebrew..."
+          brew install ruby-build
+          ;;
+        Linux)
+          echo "Installing via git..."
+          git clone https://github.com/rbenv/ruby-build.git ~/.rbenv/plugins/ruby-build
+          ;;
+      esac
+    fi
+
+    # Install Ruby if needed
+    if ! rbenv versions | grep -q "$REQUIRED_RUBY"; then
+      echo "Installing Ruby $REQUIRED_RUBY..."
+      rbenv install "$REQUIRED_RUBY"
+    fi
+
+    # Set local Ruby version
+    rbenv local "$REQUIRED_RUBY"
+    rbenv rehash
+
+    # Verify
+    echo "Ruby version: $(ruby --version)"
+    ;;
+
+  rvm)
+    echo "Using RVM..."
+
+    # Install Ruby if needed
+    if ! rvm list | grep -q "$REQUIRED_RUBY"; then
+      echo "Installing Ruby $REQUIRED_RUBY..."
+      rvm install "$REQUIRED_RUBY"
+    fi
+
+    # Use Ruby version
+    rvm use "$REQUIRED_RUBY"
+
+    # Create gemset
+    rvm gemset create agentic-rails
+    rvm use "$REQUIRED_RUBY@agentic-rails"
+
+    echo "Ruby version: $(ruby --version)"
+    ;;
+
+  chruby)
+    echo "Using chruby..."
+
+    # Check if ruby-install is available
+    if ! command -v ruby-install &> /dev/null; then
+      echo "⚠️  ruby-install not found. Please install it first."
+      exit 1
+    fi
+
+    # Install Ruby if needed
+    if ! ls ~/.rubies | grep -q "ruby-$REQUIRED_RUBY"; then
+      echo "Installing Ruby $REQUIRED_RUBY..."
+      ruby-install ruby "$REQUIRED_RUBY"
+    fi
+
+    # Switch to Ruby
+    source /usr/local/share/chruby/chruby.sh
+    chruby "$REQUIRED_RUBY"
+
+    echo "Ruby version: $(ruby --version)"
+    ;;
+
+  asdf)
+    echo "Using asdf..."
+
+    # Add Ruby plugin if needed
+    if ! asdf plugin list | grep -q ruby; then
+      asdf plugin add ruby
+    fi
+
+    # Install Ruby if needed
+    if ! asdf list ruby | grep -q "$REQUIRED_RUBY"; then
+      echo "Installing Ruby $REQUIRED_RUBY..."
+      asdf install ruby "$REQUIRED_RUBY"
+    fi
+
+    # Set local Ruby version
+    asdf local ruby "$REQUIRED_RUBY"
+
+    echo "Ruby version: $(ruby --version)"
+    ;;
+
+  none)
+    echo "⚠️  No Ruby version manager detected!"
+    echo ""
+    echo "Your system Ruby: $(ruby --version)"
+    echo ""
+
+    # Check if system Ruby is compatible
+    CURRENT_RUBY=$(ruby -e 'puts RUBY_VERSION')
+    if [[ "$CURRENT_RUBY" == "3.3."* ]]; then
+      echo "✓ System Ruby is compatible (3.3.x)"
+    else
+      echo "✗ System Ruby ($CURRENT_RUBY) may not be compatible"
+      echo ""
+      echo "Recommended: Install rbenv on FreeBSD:"
+      echo "  sudo pkg install rbenv ruby-build"
+      echo "  echo 'eval \"\$(rbenv init -)\"' >> ~/.bashrc"
+      echo "  source ~/.bashrc"
+      echo "  rbenv install $REQUIRED_RUBY"
+      exit 1
+    fi
+    ;;
+esac
+
+echo ""
+echo "=== Installing Bundler ==="
+gem install bundler -v '2.5.3' --no-document
+
+echo ""
+echo "=== Installing Dependencies ==="
+bundle install
+
+echo ""
+echo "✅ Ruby environment setup complete!"
+echo ""
+echo "Ruby: $(ruby --version)"
+echo "Bundler: $(bundle --version)"
+echo "Manager: $RUBY_MANAGER"
