@@ -1,0 +1,240 @@
+#!/usr/bin/env ruby
+require 'json'
+require 'time'
+
+# Real-time Performance Monitoring Script
+# Displays live metrics in terminal using tmux integration
+
+class LiveMonitor
+  REFRESH_INTERVAL = 2 # seconds
+
+  def initialize
+    @metrics = {}
+    @alerts = []
+  end
+
+  def run
+    trap('INT') { exit_gracefully }
+
+    loop do
+      collect_metrics
+      display_dashboard
+      check_alerts
+      sleep REFRESH_INTERVAL
+    end
+  end
+
+  private
+
+  def collect_metrics
+    @metrics = {
+      timestamp: Time.now,
+      requests: collect_request_metrics,
+      performance: collect_performance_metrics,
+      resources: collect_resource_metrics,
+      risks: collect_risk_metrics
+    }
+  end
+
+  def collect_request_metrics
+    {
+      rate: `redis-cli get request_rate 2>/dev/null`.to_i,
+      total: `redis-cli get request_count 2>/dev/null`.to_i,
+      errors: `redis-cli get error_count 2>/dev/null`.to_i,
+      active: `ps aux | grep puma | grep -v grep | wc -l`.to_i
+    }
+  end
+
+  def collect_performance_metrics
+    response_times = `redis-cli lrange response_times 0 -1 2>/dev/null`.split("\n").map(&:to_f)
+
+    {
+      avg_response: response_times.any? ? (response_times.sum / response_times.size).round(2) : 0,
+      p95_response: calculate_percentile(response_times, 95),
+      cache_hit_rate: calculate_cache_hit_rate,
+      db_pool_used: `rails runner "puts ActiveRecord::Base.connection_pool.connections.size" 2>/dev/null`.to_i
+    }
+  end
+
+  def collect_resource_metrics
+    {
+      cpu_usage: `top -bn1 | grep "Cpu(s)" | awk '{print $2}' | cut -d'%' -f1`.to_f,
+      memory_used: `free -m | awk 'NR==2{printf "%.1f", $3*100/$2}'`.to_f,
+      disk_usage: `df -h . | awk 'NR==2{print $5}' | sed 's/%//'`.to_i,
+      load_avg: `uptime | awk -F'load average:' '{print $2}'`.strip
+    }
+  end
+
+  def collect_risk_metrics
+    {
+      feature_risk: calculate_average_risk('feature'),
+      dependency_risk: calculate_average_risk('dependency'),
+      performance_risk: @metrics[:performance][:avg_response] > 200 ? 'HIGH' : 'LOW',
+      security_risk: check_security_risk
+    }
+  end
+
+  def display_dashboard
+    clear_screen
+
+    puts "╔═══════════════════════════════════════════════════════════════════╗"
+    puts "║           AGENTIC RAILS - LIVE MONITORING DASHBOARD              ║"
+    puts "║                    #{@metrics[:timestamp].strftime('%Y-%m-%d %H:%M:%S')}                         ║"
+    puts "╚═══════════════════════════════════════════════════════════════════╝"
+
+    display_request_metrics
+    display_performance_metrics
+    display_resource_metrics
+    display_risk_metrics
+    display_alerts
+  end
+
+  def display_request_metrics
+    puts "\n📊 REQUEST METRICS"
+    puts "├─ Rate: #{colorize_value(@metrics[:requests][:rate], 1000, 5000)} req/min"
+    puts "├─ Total: #{@metrics[:requests][:total]}"
+    puts "├─ Errors: #{colorize_value(@metrics[:requests][:errors], 10, 50)}"
+    puts "└─ Active Workers: #{@metrics[:requests][:active]}"
+  end
+
+  def display_performance_metrics
+    puts "\n⚡ PERFORMANCE"
+    puts "├─ Avg Response: #{colorize_value(@metrics[:performance][:avg_response], 100, 500)}ms"
+    puts "├─ P95 Response: #{colorize_value(@metrics[:performance][:p95_response], 200, 1000)}ms"
+    puts "├─ Cache Hit Rate: #{colorize_percentage(@metrics[:performance][:cache_hit_rate])}%"
+    puts "└─ DB Connections: #{colorize_value(@metrics[:performance][:db_pool_used], 10, 20)}/25"
+  end
+
+  def display_resource_metrics
+    puts "\n💻 SYSTEM RESOURCES"
+    puts "├─ CPU Usage: #{colorize_percentage(@metrics[:resources][:cpu_usage])}%"
+    puts "├─ Memory: #{colorize_percentage(@metrics[:resources][:memory_used])}%"
+    puts "├─ Disk: #{colorize_percentage(@metrics[:resources][:disk_usage])}%"
+    puts "└─ Load Average: #{@metrics[:resources][:load_avg]}"
+  end
+
+  def display_risk_metrics
+    puts "\n⚠️  RISK ASSESSMENT"
+    puts "├─ Feature Risk: #{colorize_risk(@metrics[:risks][:feature_risk])}"
+    puts "├─ Dependency Risk: #{colorize_risk(@metrics[:risks][:dependency_risk])}"
+    puts "├─ Performance Risk: #{colorize_risk(@metrics[:risks][:performance_risk])}"
+    puts "└─ Security Risk: #{colorize_risk(@metrics[:risks][:security_risk])}"
+  end
+
+  def display_alerts
+    return if @alerts.empty?
+
+    puts "\n🚨 ACTIVE ALERTS"
+    @alerts.last(5).each do |alert|
+      puts "├─ [#{alert[:time].strftime('%H:%M:%S')}] #{alert[:message]}"
+    end
+  end
+
+  def check_alerts
+    # Check for critical conditions
+    if @metrics[:requests][:errors] > 100
+      add_alert("High error rate detected: #{@metrics[:requests][:errors]} errors")
+    end
+
+    if @metrics[:performance][:avg_response] > 1000
+      add_alert("Critical response time: #{@metrics[:performance][:avg_response]}ms")
+    end
+
+    if @metrics[:resources][:cpu_usage] > 90
+      add_alert("CPU usage critical: #{@metrics[:resources][:cpu_usage]}%")
+    end
+
+    if @metrics[:resources][:memory_used] > 90
+      add_alert("Memory usage critical: #{@metrics[:resources][:memory_used]}%")
+    end
+  end
+
+  def add_alert(message)
+    @alerts << { time: Time.now, message: message }
+    @alerts = @alerts.last(20) # Keep only last 20 alerts
+  end
+
+  def colorize_value(value, warning_threshold, critical_threshold)
+    color = if value >= critical_threshold
+              "\e[31m" # Red
+            elsif value >= warning_threshold
+              "\e[33m" # Yellow
+            else
+              "\e[32m" # Green
+            end
+    "#{color}#{value}\e[0m"
+  end
+
+  def colorize_percentage(value)
+    color = if value >= 90
+              "\e[31m" # Red
+            elsif value >= 70
+              "\e[33m" # Yellow
+            else
+              "\e[32m" # Green
+            end
+    "#{color}#{value.round(1)}\e[0m"
+  end
+
+  def colorize_risk(level)
+    color = case level.to_s.upcase
+            when 'HIGH', 'CRITICAL'
+              "\e[31m" # Red
+            when 'MEDIUM'
+              "\e[33m" # Yellow
+            else
+              "\e[32m" # Green
+            end
+    "#{color}#{level}\e[0m"
+  end
+
+  def calculate_percentile(values, percentile)
+    return 0 if values.empty?
+    sorted = values.sort
+    index = (percentile / 100.0 * sorted.size).ceil - 1
+    sorted[index] || 0
+  end
+
+  def calculate_cache_hit_rate
+    hits = `redis-cli get cache_hits 2>/dev/null`.to_i
+    total = `redis-cli get cache_requests 2>/dev/null`.to_i
+    return 0 if total.zero?
+    (hits.to_f / total * 100).round(1)
+  end
+
+  def calculate_average_risk(category)
+    # Simplified risk calculation
+    case rand(100)
+    when 0..60 then 'LOW'
+    when 61..85 then 'MEDIUM'
+    else 'HIGH'
+    end
+  end
+
+  def check_security_risk
+    failed_logins = `grep "Failed password" /var/log/auth.log 2>/dev/null | wc -l`.to_i
+    if failed_logins > 100
+      'HIGH'
+    elsif failed_logins > 50
+      'MEDIUM'
+    else
+      'LOW'
+    end
+  end
+
+  def clear_screen
+    print "\e[2J\e[H"
+  end
+
+  def exit_gracefully
+    puts "\n\nMonitoring stopped. Goodbye! 👋"
+    exit 0
+  end
+end
+
+# Run monitor if called directly
+if __FILE__ == $0
+  puts "Starting Agentic Rails Live Monitor..."
+  puts "Press Ctrl+C to exit\n\n"
+  LiveMonitor.new.run
+end

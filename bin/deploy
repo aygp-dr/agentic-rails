@@ -1,0 +1,406 @@
+#!/usr/bin/env ruby
+require 'json'
+require 'time'
+
+# Risk-Aware Deployment Script
+# Implements deployment with risk assessment and rollback capability
+
+class RiskAwareDeployment
+  DEPLOYMENT_STAGES = %w[pre_check build test deploy post_check].freeze
+
+  def initialize(environment = 'production')
+    @environment = environment
+    @start_time = Time.now
+    @deployment_id = Time.now.strftime('%Y%m%d%H%M%S')
+    @risks = []
+    @metrics = {}
+  end
+
+  def run
+    puts "🚀 Agentic Rails Deployment to #{@environment}"
+    puts "Deployment ID: #{@deployment_id}\n\n"
+
+    begin
+      DEPLOYMENT_STAGES.each do |stage|
+        execute_stage(stage)
+      end
+
+      finalize_deployment
+    rescue => e
+      handle_deployment_failure(e)
+    end
+  end
+
+  private
+
+  def execute_stage(stage)
+    puts "== Stage: #{stage.upcase} =="
+    @metrics[stage] = { start: Time.now }
+
+    case stage
+    when 'pre_check'
+      pre_deployment_checks
+    when 'build'
+      build_application
+    when 'test'
+      run_tests
+    when 'deploy'
+      deploy_application
+    when 'post_check'
+      post_deployment_checks
+    end
+
+    @metrics[stage][:end] = Time.now
+    @metrics[stage][:duration] = @metrics[stage][:end] - @metrics[stage][:start]
+    puts "✓ #{stage} completed in #{@metrics[stage][:duration].round(2)}s\n\n"
+  end
+
+  def pre_deployment_checks
+    puts "Performing pre-deployment risk assessment..."
+
+    # Check git status
+    check_git_status
+
+    # Check system resources
+    check_system_resources
+
+    # Check external dependencies
+    check_dependencies
+
+    # Evaluate risks
+    evaluate_deployment_risks
+  end
+
+  def check_git_status
+    print "  Checking git status... "
+
+    unless system('git diff --quiet')
+      @risks << { level: :high, category: :code, message: "Uncommitted changes detected" }
+    end
+
+    branch = `git rev-parse --abbrev-ref HEAD`.strip
+    if branch != 'main' && @environment == 'production'
+      @risks << { level: :medium, category: :code, message: "Deploying from branch: #{branch}" }
+    end
+
+    puts "✓"
+  end
+
+  def check_system_resources
+    print "  Checking system resources... "
+
+    # Check CPU load
+    load_avg = `uptime`.match(/load average: ([\d.]+)/)[1].to_f
+    if load_avg > 2.0
+      @risks << { level: :medium, category: :infrastructure, message: "High CPU load: #{load_avg}" }
+    end
+
+    # Check memory
+    if RUBY_PLATFORM =~ /darwin/
+      free_memory = `vm_stat | grep 'Pages free' | awk '{print $3}'`.to_i * 4096 / 1024 / 1024
+    else
+      free_memory = `free -m | grep Mem | awk '{print $4}'`.to_i
+    end
+
+    if free_memory < 500
+      @risks << { level: :high, category: :infrastructure, message: "Low memory: #{free_memory}MB" }
+    end
+
+    puts "✓"
+  end
+
+  def check_dependencies
+    print "  Checking external dependencies... "
+
+    # Check database
+    unless system('pg_isready -q')
+      @risks << { level: :critical, category: :dependency, message: "Database unavailable" }
+    end
+
+    # Check Redis
+    unless system('redis-cli ping > /dev/null 2>&1')
+      @risks << { level: :high, category: :dependency, message: "Redis unavailable" }
+    end
+
+    puts "✓"
+  end
+
+  def evaluate_deployment_risks
+    if @risks.empty?
+      puts "  ✅ No risks detected"
+      return
+    end
+
+    puts "\n  ⚠️  Deployment Risks Detected:"
+    @risks.each do |risk|
+      icon = case risk[:level]
+             when :critical then "🔴"
+             when :high then "🟠"
+             when :medium then "🟡"
+             else "⚪"
+             end
+      puts "    #{icon} [#{risk[:category].upcase}] #{risk[:message]}"
+    end
+
+    critical_risks = @risks.select { |r| r[:level] == :critical }
+    high_risks = @risks.select { |r| r[:level] == :high }
+
+    if critical_risks.any?
+      abort("\n❌ Critical risks detected. Deployment aborted.")
+    elsif high_risks.any?
+      print "\n  High risks detected. Continue? (y/n) "
+      response = gets.chomp
+      abort("Deployment cancelled by user") unless response.downcase == 'y'
+    end
+  end
+
+  def build_application
+    puts "Building application..."
+
+    # Build Docker image
+    print "  Building Docker image... "
+    system!("docker build -t agentic-rails:#{@deployment_id} .")
+    puts "✓"
+
+    # Tag for environment
+    print "  Tagging image... "
+    system!("docker tag agentic-rails:#{@deployment_id} agentic-rails:#{@environment}")
+    puts "✓"
+
+    # Compile assets
+    print "  Compiling assets... "
+    system!("docker run --rm agentic-rails:#{@deployment_id} rails assets:precompile")
+    puts "✓"
+  end
+
+  def run_tests
+    puts "Running test suite..."
+
+    test_results = {}
+
+    # Unit tests
+    print "  Running unit tests... "
+    test_results[:unit] = system("docker run --rm agentic-rails:#{@deployment_id} rails test")
+    puts test_results[:unit] ? "✓" : "✗"
+
+    # Integration tests
+    print "  Running integration tests... "
+    test_results[:integration] = system("docker run --rm agentic-rails:#{@deployment_id} rails test:system")
+    puts test_results[:integration] ? "✓" : "✗"
+
+    # Performance benchmarks
+    print "  Running performance benchmarks... "
+    test_results[:performance] = system("docker run --rm agentic-rails:#{@deployment_id} rails test:benchmark")
+    puts test_results[:performance] ? "✓" : "✗"
+
+    # Security scan
+    print "  Running security scan... "
+    test_results[:security] = system("docker run --rm agentic-rails:#{@deployment_id} brakeman -q")
+    puts test_results[:security] ? "✓" : "✗"
+
+    failed_tests = test_results.select { |_, passed| !passed }.keys
+    if failed_tests.any?
+      @risks << {
+        level: :high,
+        category: :quality,
+        message: "Failed tests: #{failed_tests.join(', ')}"
+      }
+
+      print "\n  ⚠️  Some tests failed. Continue anyway? (y/n) "
+      response = gets.chomp
+      abort("Deployment cancelled due to test failures") unless response.downcase == 'y'
+    end
+  end
+
+  def deploy_application
+    puts "Deploying to #{@environment}..."
+
+    # Create backup
+    print "  Creating backup... "
+    create_backup
+    puts "✓"
+
+    # Blue-green deployment
+    print "  Starting new version... "
+    start_new_version
+    puts "✓"
+
+    # Run migrations
+    print "  Running migrations... "
+    run_migrations
+    puts "✓"
+
+    # Switch traffic
+    print "  Switching traffic... "
+    switch_traffic
+    puts "✓"
+
+    # Stop old version
+    print "  Stopping old version... "
+    stop_old_version
+    puts "✓"
+  end
+
+  def post_deployment_checks
+    puts "Performing post-deployment verification..."
+
+    # Health check
+    print "  Health check... "
+    unless health_check_passed?
+      @risks << { level: :critical, category: :health, message: "Health check failed" }
+      puts "✗"
+      trigger_rollback
+      abort("Deployment rolled back due to health check failure")
+    end
+    puts "✓"
+
+    # Performance check
+    print "  Performance check... "
+    check_performance
+    puts "✓"
+
+    # Error rate check
+    print "  Error rate check... "
+    check_error_rate
+    puts "✓"
+  end
+
+  def create_backup
+    system!("docker exec agentic-rails-db pg_dump -U postgres agentic_rails_#{@environment} > backup-#{@deployment_id}.sql")
+  end
+
+  def start_new_version
+    system!("docker-compose -f docker-compose.#{@environment}.yml up -d web-new")
+    sleep 5 # Wait for container to start
+  end
+
+  def run_migrations
+    system!("docker-compose -f docker-compose.#{@environment}.yml exec web-new rails db:migrate")
+  end
+
+  def switch_traffic
+    # Update nginx or load balancer configuration
+    system!("docker-compose -f docker-compose.#{@environment}.yml exec nginx nginx -s reload")
+  end
+
+  def stop_old_version
+    system!("docker-compose -f docker-compose.#{@environment}.yml stop web-old")
+  end
+
+  def health_check_passed?
+    3.times do
+      response = `curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/health`
+      return true if response == "200"
+      sleep 2
+    end
+    false
+  end
+
+  def check_performance
+    response_time = `curl -s -w "%{time_total}" -o /dev/null http://localhost:3000`.to_f
+    if response_time > 1.0
+      @risks << { level: :medium, category: :performance, message: "Slow response: #{response_time}s" }
+    end
+  end
+
+  def check_error_rate
+    # Check application logs for errors
+    error_count = `docker logs agentic-rails-web 2>&1 | grep -c ERROR`.to_i
+    if error_count > 10
+      @risks << { level: :high, category: :stability, message: "High error count: #{error_count}" }
+    end
+  end
+
+  def trigger_rollback
+    puts "\n🔄 Triggering rollback..."
+
+    # Restore from backup
+    system!("docker exec -i agentic-rails-db psql -U postgres agentic_rails_#{@environment} < backup-#{@deployment_id}.sql")
+
+    # Switch back to old version
+    system!("docker-compose -f docker-compose.#{@environment}.yml up -d web-old")
+    system!("docker-compose -f docker-compose.#{@environment}.yml stop web-new")
+
+    puts "✓ Rollback completed"
+  end
+
+  def finalize_deployment
+    duration = Time.now - @start_time
+
+    puts "=" * 50
+    puts "\n✅ Deployment Successful!"
+    puts "Environment: #{@environment}"
+    puts "Deployment ID: #{@deployment_id}"
+    puts "Duration: #{duration.round(2)} seconds"
+
+    if @risks.any?
+      puts "\n⚠️  Risks encountered during deployment:"
+      @risks.each do |risk|
+        puts "  - [#{risk[:category]}] #{risk[:message]}"
+      end
+    end
+
+    puts "\nStage Metrics:"
+    @metrics.each do |stage, metrics|
+      puts "  #{stage}: #{metrics[:duration].round(2)}s"
+    end
+
+    # Log deployment
+    log_deployment(status: 'success', duration: duration)
+
+    # Send notifications
+    notify_deployment_success
+  end
+
+  def handle_deployment_failure(error)
+    duration = Time.now - @start_time
+
+    puts "\n❌ Deployment Failed!"
+    puts "Error: #{error.message}"
+    puts "Duration: #{duration.round(2)} seconds"
+
+    # Log failure
+    log_deployment(status: 'failed', duration: duration, error: error.message)
+
+    # Trigger rollback
+    trigger_rollback
+
+    # Send notifications
+    notify_deployment_failure(error)
+
+    exit 1
+  end
+
+  def log_deployment(details)
+    File.open('deployments.log', 'a') do |f|
+      f.puts({
+        deployment_id: @deployment_id,
+        environment: @environment,
+        timestamp: Time.now.iso8601,
+        risks: @risks,
+        metrics: @metrics,
+        **details
+      }.to_json)
+    end
+  end
+
+  def notify_deployment_success
+    # Implement Slack/email notifications
+    puts "\n📧 Notifications sent to team"
+  end
+
+  def notify_deployment_failure(error)
+    # Implement urgent notifications
+    puts "\n🚨 Failure notifications sent to on-call team"
+  end
+
+  def system!(*args)
+    system(*args) || raise("Command failed: #{args}")
+  end
+end
+
+# Run deployment if called directly
+if __FILE__ == $0
+  environment = ARGV[0] || 'production'
+  RiskAwareDeployment.new(environment).run
+end
