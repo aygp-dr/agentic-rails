@@ -1,6 +1,17 @@
 # Agentic Rails
 
-A comprehensive framework combining Rails 7.2, tmux productivity, DevOps practices, performance optimization, and risk-aware development.
+[![Rails](https://img.shields.io/badge/Rails-7.2-red)](https://rubyonrails.org/)
+[![Ruby](https://img.shields.io/badge/Ruby-3.3-red)](https://www.ruby-lang.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15+-blue)](https://www.postgresql.org/)
+[![Docker](https://img.shields.io/badge/Docker-Ready-blue)](https://www.docker.com/)
+[![tmux](https://img.shields.io/badge/tmux-3.4+-green)](https://github.com/tmux/tmux)
+[![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
+[![Progressive Commits](https://img.shields.io/badge/Progressive-Commits-purple)](docs/PROGRESSIVE_COMMIT_PROTOCOL_GUIDE.md)
+[![Risk-Aware](https://img.shields.io/badge/Risk-Aware-Development-orange)](.github/COMMIT_PROTOCOL.md)
+
+> **A risk-aware, performance-optimized Rails framework that integrates terminal productivity, DevOps automation, and experiment-driven development practices.**
+
+Agentic Rails combines wisdom from five essential books to create a comprehensive development framework that actively manages its own risks, performance, and deployment lifecycle. It implements the Progressive Commit Protocol for traceable, experiment-driven development with built-in hypothesis testing.
 
 ## Overview
 

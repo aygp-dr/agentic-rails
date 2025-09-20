@@ -1,0 +1,19 @@
+{
+  "name": "agentic-rails",
+  "description": "Risk-aware Rails framework with Progressive Commit Protocol, experiment-driven development, tmux integration, and DevOps automation",
+  "topics": [
+    "rails",
+    "devops",
+    "risk-management",
+    "performance-monitoring",
+    "experiment-driven-development"
+  ],
+  "homepage": "https://github.com/aygp-dr/agentic-rails",
+  "private": false,
+  "has_issues": true,
+  "has_projects": true,
+  "has_wiki": true,
+  "has_downloads": true,
+  "license": "MIT",
+  "default_branch": "main"
+}
