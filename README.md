@@ -11,7 +11,7 @@
 
 > **A risk-aware, performance-optimized Rails framework that integrates terminal productivity, DevOps automation, and experiment-driven development practices.**
 
-![Agentic Rails Demo](demo/demo.gif)
+![Agentic Rails Demo](demo/showcase.gif)
 
 Agentic Rails combines wisdom from five essential books to create a comprehensive development framework that actively manages its own risks, performance, and deployment lifecycle. It implements the Progressive Commit Protocol for traceable, experiment-driven development with built-in hypothesis testing.
 
@@ -48,6 +48,23 @@ Agentic Rails integrates concepts from five essential books:
 - tmux configurations for Rails development
 - Pre-configured layouts for different workflows
 - Automated testing and monitoring setups
+
+## Demo
+
+Run the interactive demo to see Agentic Rails in action:
+
+```bash
+# Quick demo showing risk assessment
+bash demo/showcase.sh
+
+# Or record your own demo
+asciinema rec demo/my-demo.cast
+bash demo/showcase.sh
+# Press Ctrl+D to stop recording
+
+# Convert to GIF
+agg demo/my-demo.cast demo/my-demo.gif
+```
 
 ## Quick Start
 
