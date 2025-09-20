@@ -1,6 +1,6 @@
 source 'https://rubygems.org'
 
-ruby '3.3.0'
+ruby '3.3.8'
 
 # Rails and core dependencies
 gem 'rails', '~> 7.2.0'
@@ -16,8 +16,6 @@ gem 'bootsnap', '>= 1.4.4', require: false
 
 # Hotwire and real-time features
 gem 'hotwire-rails'
-gem 'turbo-rails'
-gem 'stimulus-rails'
 
 # Background jobs
 gem 'sidekiq', '~> 7.0'

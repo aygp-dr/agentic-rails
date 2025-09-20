@@ -11,7 +11,7 @@
 
 > **A risk-aware, performance-optimized Rails framework that integrates terminal productivity, DevOps automation, and experiment-driven development practices.**
 
-![Agentic Rails Demo](demo/agentic-rails.gif)
+![Agentic Rails Demo](demo/demo.gif)
 
 Agentic Rails combines wisdom from five essential books to create a comprehensive development framework that actively manages its own risks, performance, and deployment lifecycle. It implements the Progressive Commit Protocol for traceable, experiment-driven development with built-in hypothesis testing.
 
