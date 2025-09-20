@@ -1,0 +1,9 @@
+ARCH: Product model demonstrates concern integration pattern. RiskAware and PerformanceMonitored concerns provide cross-cutting functionality without cluttering the model.
+
+RISK: Model includes four risk calculation methods mapping to Risk-First categories. Each method returns normalized 0-1 score for consistent risk aggregation.
+
+PERF: Performance-critical methods (calculate_discount, update_inventory) wrapped with monitoring. Pessimistic locking prevents race conditions on inventory updates.
+
+TEST: Comprehensive test coverage including risk calculations, performance monitoring, validations, and ActionCable integration. Stub pattern used for external dependencies.
+
+EXP: Combining risk assessment with domain logic creates self-aware models that can participate in system-wide risk management. Performance monitoring at method level enables fine-grained optimization.
