@@ -1,0 +1,2 @@
+{"version": 2, "width": 100, "height": 30, "timestamp": 1758368359, "idle_time_limit": 2.0, "env": {"SHELL": "/usr/local/bin/bash", "TERM": "xterm-256color"}, "title": "Agentic Rails Demo"}
+[0.004192, "o", "sh: ./demo/quick-demo.sh: not found\r\n"]
