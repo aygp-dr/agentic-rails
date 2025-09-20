@@ -7,7 +7,7 @@
 [![tmux](https://img.shields.io/badge/tmux-3.4+-green)](https://github.com/tmux/tmux)
 [![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
 [![Progressive Commits](https://img.shields.io/badge/Progressive-Commits-purple)](docs/PROGRESSIVE_COMMIT_PROTOCOL_GUIDE.md)
-[![Risk-Aware](https://img.shields.io/badge/Risk-Aware-Development-orange)](.github/COMMIT_PROTOCOL.md)
+[![Risk-Aware](https://img.shields.io/badge/Risk--Aware-Development-orange)](.github/COMMIT_PROTOCOL.md)
 
 > **A risk-aware, performance-optimized Rails framework that integrates terminal productivity, DevOps automation, and experiment-driven development practices.**
 
