@@ -22,7 +22,8 @@
     <footer id="build" hidden></footer>
     <script type="module">
       // dev build line: sha, branch, slot (the endpoint answers 204 outside dev)
-      fetch("/api/build").then((r) => (r.status === 200 ? r.json() : null)).then((b) => {
+      import { traceHeaders } from "telemetry"
+      fetch("/api/build", { headers: traceHeaders() }).then((r) => (r.status === 200 ? r.json() : null)).then((b) => {
         if (!b) return;
         const el = document.getElementById("build");
         el.textContent = [b.sha + (b.dirty ? " (dirty)" : ""), b.branch,

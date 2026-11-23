@@ -6,16 +6,19 @@
 //
 // Each tool calls the same JSON endpoints the forms post to, in this page's
 // session (same cookie, same cart), and names itself app.driver=webmcp in
-// W3C baggage, so a tool call can be told apart from a click once the server
-// records spans. Annotations: read-only tools say so; checkout is the one
+// W3C baggage, with its own traceparent, so a tool call's server span (and
+// an order it places) can be told apart from a click. The page's run and
+// agent, if ?ff= named them, ride along. Annotations: read-only tools say so; checkout is the one
 // consequential action; anything echoing pet or cart text is untrusted content.
+
+import { traceHeaders } from "telemetry"
 
 const context = () => document.modelContext ?? navigator.modelContext
 
 const csrf = () => document.querySelector('meta[name="csrf-token"]')?.content
 
 async function call(method, path, body) {
-  const headers = { Accept: "application/json", baggage: "app.driver=webmcp" }
+  const headers = { Accept: "application/json", ...traceHeaders({ driver: "webmcp" }) }
   if (body) headers["Content-Type"] = "application/json"
   if (method !== "GET") headers["X-CSRF-Token"] = csrf()
   const response = await fetch(path, {
