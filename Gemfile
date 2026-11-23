@@ -1,122 +1,36 @@
-source 'https://rubygems.org'
+source "https://rubygems.org"
 
-ruby '3.3.8'
+# Bundle edge Rails instead: gem "rails", github: "rails/rails", branch: "main"
+gem "rails", "~> 8.0.5", ">= 8.0.5.2"
+# The modern asset pipeline for Rails [https://github.com/rails/propshaft]
+gem "propshaft"
+# Use sqlite3 as the database for Active Record
+gem "sqlite3", ">= 2.1"
+# Use the Puma web server [https://github.com/puma/puma]
+gem "puma", ">= 5.0"
+# Use JavaScript with ESM import maps [https://github.com/rails/importmap-rails]
+gem "importmap-rails"
+# Hotwire's SPA-like page accelerator [https://turbo.hotwired.dev]
+gem "turbo-rails"
+# Hotwire's modest JavaScript framework [https://stimulus.hotwired.dev]
+gem "stimulus-rails"
 
-# Rails and core dependencies
-gem 'rails', '~> 7.2.0'
-gem 'sprockets-rails'
-gem 'pg', '~> 1.5'
-gem 'puma', '~> 6.0'
-gem 'importmap-rails'
-gem 'turbo-rails'
-gem 'stimulus-rails'
-gem 'jbuilder'
-gem 'redis', '~> 5.0'
-gem 'bootsnap', '>= 1.4.4', require: false
+# Use Active Model has_secure_password [https://guides.rubyonrails.org/active_model_basics.html#securepassword]
+# gem "bcrypt", "~> 3.1.7"
 
-# Hotwire and real-time features
-gem 'hotwire-rails'
+# Windows does not include zoneinfo files, so bundle the tzinfo-data gem
+gem "tzinfo-data", platforms: %i[ windows jruby ]
 
-# Background jobs
-gem 'sidekiq', '~> 7.0'
-gem 'sidekiq-cron'
+# Reduces boot times through caching; required in config/boot.rb
+gem "bootsnap", require: false
 
-# Performance and monitoring
-gem 'skylight' # Application performance monitoring
-gem 'bullet' # N+1 query detection
-gem 'rack-mini-profiler'
-gem 'memory_profiler'
-gem 'flamegraph'
-gem 'stackprof'
-
-# Caching
-gem 'redis-rails'
-gem 'dalli' # Memcached
-gem 'rack-cache'
-
-# Database optimization
-gem 'database_cleaner-active_record'
-gem 'activerecord-import' # Bulk inserts
-gem 'ar_lazy_preload' # Automatic preloading
-gem 'strong_migrations' # Safe migrations
-
-# Security
-gem 'bcrypt', '~> 3.1.7'
-gem 'rack-attack' # Rate limiting
-gem 'secure_headers'
-gem 'brakeman', require: false
-
-# DevOps and deployment
-gem 'capistrano', '~> 3.17', require: false
-gem 'capistrano-rails', '~> 1.6', require: false
-gem 'capistrano-passenger', '~> 0.2.0', require: false
-gem 'capistrano-rbenv', '~> 2.2', require: false
-
-# Monitoring and metrics
-gem 'prometheus-client'
-gem 'influxdb'
-gem 'lograge' # Structured logging
-
-# Risk management
-gem 'scientist' # Experimentation framework
-gem 'flipper' # Feature flags
-gem 'flipper-active_record'
-gem 'flipper-ui'
-
-# API and serialization
-gem 'jsonapi-serializer'
-gem 'oj' # Fast JSON parsing
-
-# Testing and quality
 group :development, :test do
-  gem 'debug', platforms: %i[mri windows]
-  gem 'rspec-rails'
-  gem 'factory_bot_rails'
-  gem 'faker'
-  gem 'pry-rails'
-  gem 'pry-byebug'
-end
-
-group :development do
-  gem 'web-console'
-  gem 'listen', '~> 3.8'
-  gem 'spring'
-
-  # Code quality
-  gem 'rubocop', require: false
-  gem 'rubocop-rails', require: false
-  gem 'rubocop-performance', require: false
-  gem 'rails_best_practices', require: false
-  gem 'bundler-audit', require: false
-
-  # Development tools
-  gem 'guard'
-  gem 'guard-rspec'
-  gem 'guard-rubocop'
-  gem 'guard-brakeman'
-
-  # Performance
-  gem 'derailed_benchmarks'
-  gem 'benchmark-ips'
+  # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
+  gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
 end
 
 group :test do
-  gem 'capybara'
-  gem 'selenium-webdriver'
-  gem 'webdrivers'
-  gem 'simplecov', require: false
-  gem 'timecop'
-  gem 'webmock'
-  gem 'vcr'
-  gem 'shoulda-matchers'
-  gem 'parallel_tests'
+  # Use system testing [https://guides.rubyonrails.org/testing.html#system-testing]
+  gem "capybara"
+  gem "selenium-webdriver"
 end
-
-# Production optimizations
-group :production do
-  gem 'rack-timeout'
-  gem 'health_check'
-end
-
-# Windows specific
-gem 'tzinfo-data', platforms: %i[windows jruby]

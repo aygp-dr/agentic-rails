@@ -1,0 +1,13 @@
+<h1>Pets</h1>
+<ul class="pets">
+  <% @pets.each do |pet| %>
+    <li class="pet" data-sku="<%= pet.sku %>">
+      <a href="<%= pet_path(pet.sku) %>" class="pet-name"><%= pet.name %></a>
+      <span class="species"><%= pet.species %></span>
+      <span class="price"><%= pet.price %></span>
+      <span class="stock"><%= pet.in_stock? ? "#{pet.stock} in stock" : "sold out" %></span>
+      <%= button_to "Add to cart", cart_items_path, params: { sku: pet.sku }, disabled: !pet.in_stock?,
+                    class: "add", form: { "data-sku": pet.sku } %>
+    </li>
+  <% end %>
+</ul>

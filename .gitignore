@@ -1,2 +1,18 @@
-vendor/
-vendor/
+# Rails
+/.bundle/
+/vendor/bundle/
+/config/*.key
+/log/*
+!/log/.keep
+/tmp/*
+!/tmp/.keep
+/storage/*
+!/storage/.keep
+/public/assets
+# local
+/worktrees/
+/node_modules/
+/dev/browser/node_modules/
+/dev/browser/test-results/
+/dev/browser/bombadil-results/
+.DS_Store

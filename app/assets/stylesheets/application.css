@@ -1,0 +1,14 @@
+:root { --bg: #fbfaf7; --fg: #1f2420; --muted: #6a7266; --rule: #ddd8cc; --accent: #2f6b4f; }
+@media (prefers-color-scheme: dark) { :root { --bg: #151816; --fg: #e4e8e2; --muted: #9aa496; --rule: #2e342f; --accent: #8fc6a7; } }
+body { margin: 0 auto; max-width: 52rem; padding: 1rem; background: var(--bg); color: var(--fg); font: 16px/1.5 system-ui, sans-serif; }
+header { display: flex; justify-content: space-between; border-bottom: 1px solid var(--rule); padding-bottom: .5rem; }
+a { color: var(--accent); }
+.brand { font-weight: 600; text-decoration: none; }
+.pets { list-style: none; padding: 0; }
+.pet { display: grid; grid-template-columns: 1fr 6rem 6rem 7rem auto; gap: .5rem; align-items: center; padding: .4rem 0; border-bottom: 1px solid var(--rule); }
+.species, .stock { color: var(--muted); }
+.cart { width: 100%; border-collapse: collapse; }
+.cart td, .cart th { text-align: left; padding: .3rem; border-bottom: 1px solid var(--rule); }
+.qty { display: flex; gap: .3rem; } .qty input { width: 4rem; }
+.flash { padding: .4rem .6rem; border-left: 3px solid var(--accent); }
+footer#build { margin-top: 2rem; color: var(--muted); font-size: 11px; }

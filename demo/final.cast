@@ -1,3 +1,0 @@
-{"version": 2, "width": 80, "height": 24, "timestamp": 1758427809, "env": {"SHELL": "/usr/local/bin/bash", "TERM": "xterm-256color"}}
-[0.007017, "o", "\u001b[H\u001b[2J\u001b[3J"]
-[0.007921, "o", "╔═══════════════════════════════════════════╗\r\n║         AGENTIC RAILS FRAMEWORK           ║\r\n╚═══════════════════════════════════════════╝\r\n\r\n📁 Components: risk_aware.rb, performance_monitored.rb\r\n\r\n🎯 Risk Assessment Demo:\r\n  Product: AI Assistant (5 units)\r\n  Feature Risk:    ███░░░░░░░ 30%\r\n  Dependency Risk: ████████░░ 80% ⚠️\r\n  Overall: MEDIUM RISK (48%)\r\n\r\n📝 Progressive Commits: Every commit = experiment\r\n🔧 Universal Build: FreeBSD/macOS/Linux\r\n\r\n✅ Get started: github.com/aygp-dr/agentic-rails\r\n"]

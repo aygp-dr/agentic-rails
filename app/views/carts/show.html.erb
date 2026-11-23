@@ -1,0 +1,26 @@
+<h1>Cart</h1>
+<% if current_cart.empty? %>
+  <p class="empty">Your cart is empty. <a href="<%= root_path %>">Browse pets</a></p>
+<% else %>
+  <table class="cart">
+    <thead><tr><th>Pet</th><th>Price</th><th>Quantity</th><th>Line</th><th></th></tr></thead>
+    <tbody>
+      <% current_cart.items.includes(:pet).order(:id).each do |item| %>
+        <tr class="cart-item" data-sku="<%= item.pet.sku %>">
+          <td><%= item.pet.name %></td>
+          <td><%= item.pet.price %></td>
+          <td>
+            <%= form_with url: cart_item_path(item.pet.sku), method: :patch, class: "qty" do |f| %>
+              <%= f.number_field :quantity, value: item.quantity, min: 0, max: item.pet.stock, "aria-label": "quantity of #{item.pet.name}" %>
+              <%= f.submit "Update" %>
+            <% end %>
+          </td>
+          <td class="line"><%= format("$%.2f", item.line_cents / 100.0) %></td>
+          <td><%= button_to "Remove", cart_item_path(item.pet.sku), method: :delete, class: "remove" %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+  <p class="total">Total: <strong id="cart-total"><%= format("$%.2f", current_cart.total_cents / 100.0) %></strong></p>
+  <%= button_to "Check out", checkout_path, params: { idempotency_key: SecureRandom.uuid }, class: "checkout" %>
+<% end %>
