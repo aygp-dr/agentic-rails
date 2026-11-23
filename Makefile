@@ -6,7 +6,7 @@ export PATH := $(HOME)/.asdf/shims:$(PATH)
 PORT ?= 4900
 STATE := $(or $(XDG_STATE_HOME),$(HOME)/.local/state)/agentic-rails
 
-.PHONY: help deps db reset serve test check
+.PHONY: help deps db reset serve test check report
 help: ## This list
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-8s %s\n", $$1, $$2}'
 deps: ## Install gems into vendor/bundle
@@ -22,3 +22,5 @@ serve: db ## Serve on PORT (default 4900); the access log is teed into the state
 test: deps ## Model and controller tests
 	bin/rails test
 check: test ## What CI runs (for now)
+report: ## Spans in the last MINUTES (default 60) of the data dir; exits 1 on a problem or 0 traces
+	bin/report --data $(STATE) --minutes $(or $(MINUTES),60)

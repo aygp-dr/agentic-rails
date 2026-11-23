@@ -1,0 +1,114 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# bin/report: what the spans in a window say, and whether anything is wrong
+# (slot.org R1-R3). Ruby stdlib only; it never loads Rails.
+#
+#   bin/report [--data DIR] [--since EPOCH_MS | --minutes N]
+#
+# --data     the data dir holding traces.jsonl; default
+#            $XDG_STATE_HOME/agentic-rails (~/.local/state/agentic-rails).
+# --since    the window starts at this epoch time in milliseconds (the hub's
+#            R1 unit), and includes every span that started at or after it.
+# --minutes  the window is the last N minutes (gforth-hp48's --since unit).
+#            With neither, the window is the whole file.
+#
+# Exit 0 when the window has traces and no problems; 1 on any problem and on
+# a window with no traces (a report pointed at the wrong dir must not pass);
+# 2 on bad arguments.
+
+require "json"
+require "optparse"
+require "set"
+
+PREFIX = "app"
+DRIVER = "#{PREFIX}.driver"
+RUN = "#{PREFIX}.run"
+
+data_dir = File.join(ENV["XDG_STATE_HOME"].to_s.empty? ? File.expand_path("~/.local/state") : ENV["XDG_STATE_HOME"],
+                     "agentic-rails")
+since_ms = 0
+begin
+  OptionParser.new do |options|
+    options.banner = "usage: bin/report [--data DIR] [--since EPOCH_MS | --minutes N]"
+    options.on("--data DIR") { data_dir = _1 }
+    options.on("--since EPOCH_MS", Integer) { since_ms = _1 }
+    options.on("--minutes N", Float) { since_ms = ((Time.now.to_f - _1 * 60) * 1000).floor }
+  end.parse!(ARGV)
+  raise OptionParser::InvalidArgument, ARGV.join(" ") unless ARGV.empty?
+rescue OptionParser::ParseError => error
+  warn "bin/report: #{error.message}"
+  exit 2
+end
+
+path = File.join(data_dir, "traces.jsonl")
+puts "data      #{path}"
+puts "since     #{since_ms} (#{Time.at(since_ms / 1000.0).utc.strftime("%Y-%m-%dT%H:%M:%S.%LZ")})"
+unless File.exist?(path)
+  puts "traces    0"
+  puts "FAIL: no traces.jsonl at #{path} (is --data the data dir, <state>/agentic-rails?)"
+  exit 1
+end
+
+problems = []
+all = []
+File.foreach(path).with_index(1) do |line, number|
+  span = begin
+    JSON.parse(line)
+  rescue JSON::ParserError
+    nil
+  end
+  if span.is_a?(Hash) && span["trace_id"].is_a?(String) && span["span_id"].is_a?(String)
+    all << span
+  else
+    # No timestamp to place it in a window, so it is a problem in every
+    # window until the file is repaired.
+    problems << ["not-json", "line #{number}: #{line.strip[0, 60].inspect}"]
+  end
+end
+
+since_ns = since_ms * 1_000_000
+window = all.select { _1["start_time_unix_nano"].to_i >= since_ns }
+span_ids = all.to_set { [_1["trace_id"], _1["span_id"]] } # parents across the whole file (R2, 0.1.1)
+run_of_trace = all.each_with_object({}) do |span, runs|
+  run = span.dig("attributes", RUN)
+  runs[span["trace_id"]] ||= run if run
+end
+
+window.each do |span|
+  attributes = span["attributes"] || {}
+  where = "trace #{span["trace_id"]} span #{span["span_id"]} #{span["name"]}"
+  status = attributes["http.response.status_code"].to_i
+  if span["kind"] == "server" && (status >= 500 || span.dig("status", "code") == "ERROR")
+    problems << ["server-error", "#{where} #{status}"]
+  end
+  problems << ["span-without-driver", where] unless attributes[DRIVER]
+  parent = span["parent_span_id"]
+  if span["kind"] == "client" && (parent.nil? || !span_ids.include?([span["trace_id"], parent]))
+    problems << ["missing-parent", "#{where} parent #{parent.inspect}"]
+  end
+end
+window.group_by { _1["trace_id"] }.each do |trace_id, spans|
+  drivers = spans.filter_map { _1.dig("attributes", DRIVER) }.uniq
+  problems << ["trace-with-two-drivers", "trace #{trace_id}: #{drivers.sort.join(", ")}"] if drivers.size > 1
+end
+
+traces = window.map { _1["trace_id"] }.uniq
+puts "traces    #{traces.size}"
+puts "spans     #{window.size}"
+puts "drivers"
+window.group_by { _1.dig("attributes", DRIVER) || "(none)" }.sort.each do |driver, spans|
+  puts format("  %-24s %d", driver, spans.size)
+end
+puts "runs"
+window.group_by { run_of_trace[_1["trace_id"]] || "(none)" }.sort.each do |run, spans|
+  puts format("  %-24s %d", run, spans.size)
+end
+puts "problems  #{problems.size}"
+problems.each { |kind, detail| puts format("  %-24s %s", kind, detail) }
+
+if traces.empty?
+  puts "FAIL: no traces in the window"
+  exit 1
+end
+exit(problems.empty? ? 0 : 1)
