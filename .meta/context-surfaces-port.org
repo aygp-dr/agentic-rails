@@ -1,0 +1,92 @@
+#+title: Porting context surfaces from gforth-hp48 to a Rails shop
+#+date: 2026-11-23
+
+* Why
+The owner decided (2026-11-23) to repurpose agentic-rails as the Rails home for what jwalsh/gforth-hp48 built:
+- telemetry as the first priority;
+- worktree slots;
+- named runners;
+- a log check that exits non-zero;
+- dev-only endpoints and WebMCP tools;
+- e2e and property-based browser testing.
+
+The calculator was a vehicle. A pet shop (products, cart, checkout) is a better one: it has a genuinely
+consequential action (checkout) next to undoable ones (cart).
+
+The source of truth for the pattern is gforth-hp48's =contract/surfaces.org= and =AGENTS.md= ("A subagent run,
+in order"). Its .meta notes explain why each rule exists: webmcp-tools, webmcp-evals, games-research,
+subagent-process.
+
+* State of this repo (checked 2026-11-23)
+- Rails 7.2, Ruby 3.3.8 (Gemfile), Postgres 15 and Redis via docker-compose, Turbo, rspec and capybara.
+- The app: a =Product= model and a health controller. No cart, no checkout.
+- The last commit was 2025-09-23 (an EDD guide). =worktrees/= exists.
+- *Toolchain gap:* only system Ruby 2.6.10 is installed. There's no Ruby 3.3 under asdf, mise or rbenv. Either
+  install it (=asdf install ruby 3.3.8=) or run everything in Docker. The owner decides.
+- *Port clash:* compose hard-codes =3000:3000= and =5432:5432=. That is the problem gforth-hp48's slots solved,
+  so ports must come from a slot.
+
+* What carries over, in order
+1. *Slots.* =bin/slot claim|up|info|down|release=, or a rake equivalent:
+   - port 3100+n, with Postgres per slot as a database name (=agentic_rails_slot_n=) or a port;
+   - a per-slot state dir under =$XDG_STATE_HOME/agentic-rails-slots/slot-n=;
+   - a frozen checkout per commit, =worktrees/slot-n-<task>=, which the owner wants named for both signals;
+   - =info= gives machine-readable output (=--json=), because awk parsing was a friction point;
+   - =up= prints its own "restarting <port> for <sha>" line, because agents announced shas from memory, wrongly,
+     three times.
+2. *Runner identity.* W3C =traceparent= and =baggage= carrying =app.driver=, =app.run=, =gen_ai.agent.name=
+   and =gen_ai.agent.id=; =?ff=driver:…,run:…= on page URLs; =window.appRunner= for Playwright. =human= only after
+   real input; =unknown= until then; =automation= for an unnamed webdriver. A separate =app.trigger=
+   (input/timer) for lines nobody typed.
+3. *The logs, joined on one trace id:*
+   - the access log;
+   - spans in OTLP-shaped JSONL (opentelemetry-ruby, written to the slot's state dir);
+   - consent-gated browser events (a beacon);
+   - a domain record per action (cart and order events), standing in for gforth-inspect's =.s=/=.m=.
+4. *=bin/report --since N --state DIR=*, the =bb report= equivalent. It exits 1 on any problem, and a window
+   with 0 traces is a failure. Problem kinds come first:
+   - =:server-error=, =:invalid-span=, =:browser-line-without-span=, =:span-without-record=;
+   - =:driver-mismatch=, =:runs-share-session=;
+   - domain oracles: cart totals recomputed from the line items, an order total matching its cart,
+     "checkout happened once per idempotency key".
+5. *Dev-only endpoints:* =GET /api/build= (sha, branch, slot) and a footer; =GET /api/trace/:id= (the records for
+   a trace, with no paths); =GET /api/report=; =/.well-known/appspecific/com.chrome.devtools.json=. Outside dev,
+   =/api/build= answers 204, so there's no console error. A test asserts it.
+6. *WebMCP tools* (Chrome's real API, static registration):
+   - =shop_search_products= (read-only);
+   - =shop_add_to_cart= / =shop_update_cart= (undoable, =consequentialHint false=);
+   - =shop_read_cart= (read-only; returns its trace and the record it read);
+   - =shop_checkout= (=consequentialHint true=: the first truly consequential tool);
+   - =shop_trace= (dev, =debugging true=);
+   - =shop_report= (dev).
+
+   =untrustedContentHint= goes on anything that echoes user or product text. The page's tool fields are read
+   through string keys, because advanced builds renamed fields twice in gforth-hp48.
+7. *Tests and runners:*
+   - Playwright with =BASE_URL= plus =BROWSER_STATE= (both required);
+   - per-run session names, ended in =afterAll=;
+   - an idle reaper for runner sessions;
+   - a =probes/= directory outside the checks (a =document.modelContext= recorder);
+   - property-based testing with Bombadil against a slot: carts never go negative; adding then removing is the
+     identity; totals match the line items; checkout is idempotent;
+   - =pipefail= in every wrapper, and each runner with its own output dir;
+   - WebMCP evals (=webmcp-evals= smoke mode first: no model, no key).
+8. *Process:* AGENTS.md with "A subagent run, in order" and "Before a branch or PR leaves draft":
+   - an early draft PR, pushed every 30 min;
+   - =/code-review= at medium; clean means 0 Important, nits listed, never blocking;
+   - the agent makes its own ready claim, with "## Testing done";
+   - the coordinator re-checks the claim from the logs;
+   - merge commits only, followed by a post-merge e2e routine;
+   - REVIEW.md imported into CLAUDE.md.
+
+* First steps, each a subagent run under that loop
+1. The toolchain decision, then =make check= green as the repo stands today.
+2. Slots, ports and the dev footer (=/api/build=): the same shape as gforth-hp48 PR #6.
+3. Runner identity, the spans file, and =bin/report= with 0 problems over a non-empty window.
+4. The shop: products, cart, then checkout, each with its domain record and a report oracle.
+5. The WebMCP tools, then the evals and the Bombadil properties.
+
+* Open, the owner's calls
+- Ruby 3.3 through asdf, or Docker only.
+- One Postgres with a database per slot, or a container per slot.
+- Whether =petstore-trace-lab='s span model becomes the oracle for the expected service graph.
