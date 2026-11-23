@@ -32,6 +32,16 @@ class PagesTest < ActionDispatch::IntegrationTest
     assert_equal 0, @dog.reload.stock
   end
 
+  test "each cart line has its own quantity field id" do
+    cat = Pet.create!(sku: "T-CAT", name: "Tom", species: "cat", price_cents: 5_000, stock: 3)
+    post "/cart/items", params: { sku: @dog.sku }
+    post "/cart/items", params: { sku: cat.sku }
+    get cart_path
+    ids = css_select("input[type=number]").map { _1["id"] }
+    assert_equal 2, ids.size
+    assert_equal ids.uniq, ids, "duplicate ids: a selector like #quantity hits the first line only"
+  end
+
   test "removing a line leaves an empty cart page" do
     post "/cart/items", params: { sku: @dog.sku }
     delete "/cart/items/#{@dog.sku}"
