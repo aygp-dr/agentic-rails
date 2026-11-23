@@ -35,3 +35,38 @@ The seeds are a fixed catalogue of 10 pets (`db/seeds.rb`), with stock chosen fo
 | `GET /api/build` | dev only: sha, branch, slot and port for the footer; 204 elsewhere |
 
 Money is integer cents everywhere, so totals can be checked exactly.
+
+## Telemetry
+
+The trace and report profiles of `jwalsh/context-surfaces` `slot.org` 0.1.1, attribute prefix `app`, on in every
+environment. The test suite points `XDG_STATE_HOME` at a temp dir, so tests never write to the owner's state.
+
+- Every request gets one server span and every response a `traceparent`. A valid W3C `traceparent` is continued;
+  an absent or malformed one starts a new trace.
+- The runner comes from `baggage` and from `?ff=driver:…,run:…,agent:…,agent-id:…` on the request. Baggage wins
+  key by key. The keys are `app.driver` (`human agent webmcp playwright bombadil automation curl ops unknown`;
+  any other value is `unknown`), `app.run`, `gen_ai.agent.name` and `gen_ai.agent.id`. Values must match
+  `[a-z0-9-]{1,48}`; anything else is dropped.
+- Each SQL statement in a request is a client child span: `db.query.summary` like `SELECT pets`, never SQL text
+  or values. It is sent with `/*traceparent='00-<trace>-<its span>-01'*/`. The development log shows the statements
+  as sent, tagged `[trace=<id>]`.
+- Spans go to `$XDG_STATE_HOME/agentic-rails/traces.jsonl` (default `~/.local/state/agentic-rails`), one JSON line
+  each, with OTLP field names.
+- The page's own requests (the footer, Turbo visits and forms, WebMCP tools) send `traceparent` and the runner
+  named by `?ff=` or `window.appRunner` (`app/javascript/telemetry.js`). Tool calls send `app.driver=webmcp`.
+- An order records `driver` and `trace_id` when it's placed, and the checkout span carries `app.order.id`. To find
+  who placed order N, read the `orders` row or the span.
+
+```sh
+bin/report --since <epoch ms>     # or --minutes N; --data DIR (default the data dir above)
+gmake report MINUTES=30
+curl -sD- -o/dev/null -H 'baggage: app.driver=curl,app.run=try-1' http://127.0.0.1:4900/pets.json | grep traceparent
+jq -c 'select(.trace_id=="<id>")' ~/.local/state/agentic-rails/traces.jsonl
+```
+
+`bin/report` prints traces, spans, spans per driver and per run, and problems: `server-error`,
+`span-without-driver`, `trace-with-two-drivers`, `missing-parent` and `not-json`. It exits 1 on any problem and on
+a window with 0 traces.
+
+The hub gate runs from the repo root against a running server:
+`python3 ../../jwalsh/context-surfaces/gates/slot_check.py --url http://127.0.0.1:4900/ --data-dir ~/.local/state/agentic-rails --checkout $PWD --profiles dev,trace --prefix app --db-path /pets.json`.

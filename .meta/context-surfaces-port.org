@@ -90,6 +90,25 @@ subagent-process.
 4. The shop: products, cart, then checkout, each with its domain record and a report oracle.
 5. The WebMCP tools, then the evals and the Bombadil properties.
 
+* Status
+** Step 1, telemetry: done (2026-11-23, main 8d089f7..ecad056)
+Done here, ahead of the "First steps" order below: runner identity, spans and
+=bin/report= (item 3 of that list). It implements =slot.org= 0.1.1 profiles
+=trace= (T1-T13) and =report= (R1-R3) for main (=attr_prefix= =app=). The
+toolchain call was made: Rails 8.0, Ruby 3.3.8 under asdf, SQLite. Slots
+(item 2) are still to do.
+- =lib/telemetry/=: Rack middleware first in the stack, and database client
+  spans with sqlcommenter. Hand-written, with no opentelemetry-ruby: the
+  contract is the JSONL shape.
+- =app/javascript/telemetry.js= sends trace headers on the page's own fetches.
+- =orders.driver= and =orders.trace_id= record who placed an order.
+- =bin/report=: =--since= is epoch ms, =--minutes= is the last N minutes.
+- The hub gate passes against 4900 (=--profiles dev,trace --db-path /pets.json=).
+Decisions where =slot.org= is silent: =.meta/spec-questions.org=.
+Not done: =slot.json= (C1, part of =core=, comes with slots), =sql.jsonl=
+(T10 MAY; the dev log shows the statements as sent), the beacon and the domain
+record per action (item 3's other logs), and the report's domain oracles.
+
 * Open, the owner's calls
 - Ruby 3.3 through asdf, or Docker only.
 - One Postgres with a database per slot, or a container per slot.

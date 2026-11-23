@@ -1,0 +1,74 @@
+#+TITLE: slot.org 0.1.1: decisions taken in agentic-rails
+#+OPTIONS: toc:nil num:nil
+
+Where =slot.org= (hub =jwalsh/context-surfaces=) left a choice, this is what
+agentic-rails did. The hub was not edited. Ids are the spec's. These are the
+same questions the Express and Django spokes answered; where this repo chose
+differently, it says so.
+
+* T1: what counts as valid
+Only version =00=, in the exact 55-character lowercase form, with neither id
+all zeros. Any other version, =ff= or =01-…= included, starts a new trace.
+Responses always send flags =01=.
+
+* T3/T5: decoding and precedence
+Baggage values are percent-decoded and then validated, so =%63url= is =curl=
+and =a%2Fb= is dropped. Properties after =;= are ignored. Baggage wins over
+=?ff== key by key. A =?ff== item that isn't a runner key (=cart-v2:on=) is
+a flag and is ignored here. =url.path= is the path only, never the query, so
+an =?ff== value reaches a span only through validation.
+
+* T8: status below 500
+=UNSET=, as in OTel's HTTP server convention (Django chose the same; Express
+chose =OK=). An exception that escapes the app is recorded as 500 =ERROR=
+and re-raised. =http.route= is the Rails route template without
+=(.:format)=, and the span name is =<method> <route>=.
+
+* T8 vs T9: a literal in the path
+=url.path= is the request path (T8), so =/pets/DOG-001= puts a sku in a
+span. T9's "no literals" is about database spans, which carry only the
+operation and table. The sentinel test sends its value through bind
+parameters, not the URL. *Suggest:* say whether =url.path= may carry ids,
+or whether a spoke should send =http.route= only.
+
+* T9: which statements are spans
+Every statement sent while a request runs, except: transaction control
+(=BEGIN=, =COMMIT=, =ROLLBACK=, =SAVEPOINT=, =RELEASE=), =PRAGMA=,
+=sqlite_master= / =sqlite_schema= introspection, and query-cache hits, which
+never reach the database. Statements outside a request (boot, migrations,
+seeds, the console) get no span and no comment. A database span needs a
+parent (R2), and this repo has no =ops= root span yet (Express wraps
+migrations in one). A span exists exactly when its statement carried the
+comment: the transformer chooses the span id, and the subscriber reads it
+back out of the SQL.
+
+* T9: the runner keys on database spans
+Only =app.driver=, as 0.1.1 says. =bin/report= counts spans per run by trace:
+every span in a trace counts toward the run named on its server span.
+
+* T10: SQLite has no statement log
+No =sql.jsonl= (a MAY). The development log already prints each statement as
+sent, with its comment and the =[trace=<id>]= log tag, and the bind values go
+on a separate line. Writing =sql.jsonl= would risk the literals Rails inlines
+(=IN (1,2,3)=). The Rails =query_log_tags= (controller and action) are off, so
+the statement carries a single comment, exactly =/*traceparent='…'*/=.
+
+* T13: logs
+Rails log lines are tagged =trace=<id>=, and the teed =server-<port>.log= has
+them too. No beacon yet.
+
+* R1: =--since=
+Epoch milliseconds, as R1 says. =--minutes N= is added for gforth-hp48's
+habit. Pass one or the other; with neither, the window is the whole file.
+Bad arguments exit 2.
+
+* R2: =not-json=
+It has no timestamp, so it counts as a problem in every window until the file
+is repaired (Django's choice; Express limits it to lines after the window's
+first span). A JSON line without a =trace_id= / =span_id= string counts too.
+
+* Orders (not in the spec)
+=orders.driver= and =orders.trace_id= are recorded at placement. A retry with
+the same idempotency key keeps the first attribution. The checkout server
+span carries =app.order.id=. Orders placed before the migration (1 and 2 on
+main) have neither.
