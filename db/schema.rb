@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_11_23_165640) do
+ActiveRecord::Schema[8.0].define(version: 2026_11_23_220000) do
   create_table "cart_items", force: :cascade do |t|
     t.integer "cart_id", null: false
     t.integer "pet_id", null: false
@@ -38,8 +38,11 @@ ActiveRecord::Schema[8.0].define(version: 2026_11_23_165640) do
     t.string "status", default: "placed", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "driver"
+    t.string "trace_id"
     t.index ["cart_id"], name: "index_orders_on_cart_id"
     t.index ["idempotency_key"], name: "index_orders_on_idempotency_key", unique: true
+    t.index ["trace_id"], name: "index_orders_on_trace_id"
     t.check_constraint "total_cents > 0", name: "orders_total_positive"
   end
 

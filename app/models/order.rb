@@ -9,7 +9,9 @@ class Order < ApplicationRecord
   validates :idempotency_key, presence: true, uniqueness: true
   validates :total_cents, numericality: { only_integer: true, greater_than: 0 }
 
-  def self.place!(cart, idempotency_key)
+  # A repeat with the same key returns the first order unchanged: its
+  # driver and trace_id stay the ones recorded when it was placed.
+  def self.place!(cart, idempotency_key, driver: nil, trace_id: nil)
     existing = find_by(idempotency_key: idempotency_key)
     return [existing, false] if existing
 
@@ -21,7 +23,8 @@ class Order < ApplicationRecord
         pet.update!(stock: pet.stock - item.quantity)
       end
       order = create!(cart: cart, total_cents: cart.total_cents, item_count: cart.item_count,
-                      idempotency_key: idempotency_key, status: "placed")
+                      idempotency_key: idempotency_key, status: "placed",
+                      driver: driver, trace_id: trace_id)
       cart.items.destroy_all
       [order, true]
     end

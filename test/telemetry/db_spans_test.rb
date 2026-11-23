@@ -44,14 +44,15 @@ class DbSpansTest < ActionDispatch::IntegrationTest
     assert_equal "SELECT pets", select["name"]
   end
 
+  # The sentinel goes only where the database sees it (bind values in WHERE
+  # and INSERT), never in the URL: url.path is the request path by T8, so a
+  # sku in /pets/:id is recorded there, by design, and the query string never is.
   test "no literal or bind value reaches traces.jsonl (T9)" do
-    get "/pets/#{@pet.sku}.json"
-    assert_response :success
     post "/cart/items", params: { sku: @pet.sku, quantity: 2 }
-    patch "/cart/items/#{@pet.sku}", params: { quantity: 1 }
     post "/checkout", params: { idempotency_key: "key-#{SENTINEL}" }
     assert_response :redirect
     assert_operator spans.count { _1["kind"] == "client" }, :>=, 8
+    assert spans.any? { _1.dig("attributes", "db.query.summary") == "INSERT orders" }
     text = File.read(traces_path)
     assert_not_includes text, SENTINEL
     assert_not_includes text, "4242"
