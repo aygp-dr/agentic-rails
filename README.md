@@ -10,7 +10,7 @@ It ports what jwalsh/gforth-hp48 built:
 
 The port plan is `.meta/context-surfaces-port.org`.
 
-Bare metal: Homebrew Ruby 3.4.5, Rails 8, SQLite. The development database lives in
+Bare metal: Ruby 3.3.8 pinned by asdf (`.tool-versions`), Rails 8, SQLite. The development database lives in
 `$XDG_STATE_HOME/agentic-rails/`, not in the checkout, so a worktree slot isolates its data by setting
 `XDG_STATE_HOME`.
 

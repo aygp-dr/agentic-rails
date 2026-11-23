@@ -1,9 +1,8 @@
-# Bare metal: Homebrew Ruby 3.4.5, SQLite in $XDG_STATE_HOME/agentic-rails.
+# Bare metal: Ruby 3.3.8 pinned by asdf (.tool-versions), SQLite in $XDG_STATE_HOME/agentic-rails.
 # Use gmake.
 SHELL := /bin/bash
 .SHELLFLAGS := -eu -o pipefail -c
-RUBY_BIN ?= /opt/homebrew/opt/ruby/bin
-export PATH := $(HOME)/.gem/ruby/3.4.0/bin:$(RUBY_BIN):$(PATH)
+export PATH := $(HOME)/.asdf/shims:$(PATH)
 PORT ?= 4900
 STATE := $(or $(XDG_STATE_HOME),$(HOME)/.local/state)/agentic-rails
 
