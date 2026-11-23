@@ -42,6 +42,13 @@ class PagesTest < ActionDispatch::IntegrationTest
     assert_equal ids.uniq, ids, "duplicate ids: a selector like #quantity hits the first line only"
   end
 
+  test "the layout declares its language, a description and an icon" do
+    get root_path
+    assert_select "html[lang=en]"
+    assert_select "meta[name=description][content]"
+    assert_select "link[rel=icon]"
+  end
+
   test "removing a line leaves an empty cart page" do
     post "/cart/items", params: { sku: @dog.sku }
     delete "/cart/items/#{@dog.sku}"
