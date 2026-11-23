@@ -14,6 +14,7 @@ Rails.application.routes.draw do
   namespace :api do
     get "build", to: "dev#build"
   end
+  get ".well-known/appspecific/com.chrome.devtools.json", to: "api/dev#workspace", format: false
 
   get "up" => "rails/health#show", as: :rails_health_check
 end

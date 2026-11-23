@@ -17,6 +17,18 @@ module Api
       }
     end
 
+    # Chrome DevTools automatic workspace folder: the checkout this process
+    # serves (a slot's worktree, once there are slots), with a UUID derived
+    # from that path so it is stable across restarts and differs per checkout.
+    def workspace
+      render json: self.class.devtools_workspace(Rails.root)
+    end
+
+    def self.devtools_workspace(root)
+      path = Pathname(root).realpath.to_s
+      { workspace: { root: path, uuid: Digest::UUID.uuid_v5(Digest::UUID::URL_NAMESPACE, "file://#{path}") } }
+    end
+
     private
 
     def git(*args)

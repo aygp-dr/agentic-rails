@@ -28,9 +28,13 @@ subagent-process.
 
 * What carries over, in order
 1. *Slots.* =bin/slot claim|up|info|down|release=, or a rake equivalent:
-   - port 3100+n, with Postgres per slot as a database name (=agentic_rails_slot_n=) or a port;
+   - port 4900+n (4900 is main, the owner's), with SQLite per slot: =XDG_STATE_HOME= points the slot at its own
+     state dir, so =config/database.yml= puts the database there unchanged;
    - a per-slot state dir under =$XDG_STATE_HOME/agentic-rails-slots/slot-n=;
-   - a frozen checkout per commit, =worktrees/slot-n-<task>=, which the owner wants named for both signals;
+   - a frozen checkout per commit, =worktrees/slot-n-<task>=, which the owner wants named for both signals. The
+     server runs from it, so =/.well-known/appspecific/com.chrome.devtools.json= (already on main, from
+     =Rails.root.realpath=) names that worktree, and DevTools > Sources > Workspace on =:490n= maps to it with
+     no per-slot code;
    - =info= gives machine-readable output (=--json=), because awk parsing was a friction point;
    - =up= prints its own "restarting <port> for <sha>" line, because agents announced shas from memory, wrongly,
      three times.
