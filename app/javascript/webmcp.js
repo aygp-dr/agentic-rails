@@ -38,19 +38,19 @@ function refresh(cart) {
   if (location.pathname === "/cart" && window.Turbo) window.Turbo.visit("/cart", { action: "replace" })
 }
 
-const quantity = { type: "integer", minimum: 0, maximum: 99 }
+const sku = { type: "string", description: "The pet's sku, from shop_search_products or shop_read_cart, e.g. DOG-001." }
 
 const tools = [
   {
     name: "shop_search_products",
-    description: "Searches the pet shop's catalogue. Returns matching pets with sku, name, species, price_cents and stock. All filters are optional; with none, returns every pet. Use before adding to the cart: the sku is what the cart tools take.",
+    description: "Searches the pet shop's catalogue. Returns matching pets with sku, name, species, price_cents (US cents: 18000 is $180.00) and stock. All filters are optional; with none, returns every pet. Use before adding to the cart: the sku is what the cart tools take.",
     inputSchema: {
       type: "object",
       properties: {
         query: { type: "string", description: "Words to match in the name or species, case-insensitive." },
         species: { type: "string", description: "Exact species, e.g. dog, cat, fish." },
         in_stock: { type: "boolean", description: "true for pets with stock > 0 only." },
-        max_price_cents: { type: "integer", minimum: 0 }
+        max_price_cents: { type: "integer", minimum: 0, description: "Highest price to include, in US cents (e.g. 5000 for $50.00)." }
       }
     },
     annotations: { readOnlyHint: true, untrustedContentHint: true },
@@ -72,8 +72,9 @@ const tools = [
     description: "Adds a pet to this page's cart by sku (default quantity 1) and returns the cart. Refused with an error if the stock would run out. Undoable with shop_update_cart.",
     inputSchema: {
       type: "object",
-      properties: { sku: { type: "string", description: "From shop_search_products, e.g. DOG-001." },
-                    quantity: { ...quantity, minimum: 1 } },
+      properties: { sku,
+                    quantity: { type: "integer", minimum: 1, maximum: 99,
+                                description: "How many to add, 1 to 99; default 1. Added to any already in the cart." } },
       required: ["sku"]
     },
     annotations: { readOnlyHint: false, consequentialHint: false, untrustedContentHint: true },
@@ -88,7 +89,9 @@ const tools = [
     description: "Sets the quantity of a pet already in the cart; 0 removes it. Returns the cart.",
     inputSchema: {
       type: "object",
-      properties: { sku: { type: "string" }, quantity },
+      properties: { sku,
+                    quantity: { type: "integer", minimum: 0, maximum: 99,
+                                description: "The new quantity for that line, 0 to 99; 0 removes the pet from the cart." } },
       required: ["sku", "quantity"]
     },
     annotations: { readOnlyHint: false, consequentialHint: false, untrustedContentHint: true },
@@ -100,7 +103,7 @@ const tools = [
   },
   {
     name: "shop_read_cart",
-    description: "Returns this page's cart: items (sku, name, quantity, price_cents, line_cents), item_count and total_cents. Changes nothing.",
+    description: "Returns this page's cart: items (sku, name, quantity, price_cents, line_cents), item_count and total_cents, all amounts in US cents. Changes nothing.",
     inputSchema: { type: "object", properties: {} },
     annotations: { readOnlyHint: true, untrustedContentHint: true },
     async execute() {
