@@ -1,6 +1,6 @@
 # SQLite on bare metal. Development data lives in the XDG state dir, not the
 # checkout, so a worktree slot isolates its data by setting XDG_STATE_HOME
-# (the gforth-hp48 slot model). Tests use a file under tmp/ in the checkout.
+# (the source project's slot model). Tests use a file under tmp/ in the checkout.
 <%
   require "fileutils"
   state_dir = File.join(ENV.fetch("XDG_STATE_HOME", File.expand_path("~/.local/state")), "agentic-rails")

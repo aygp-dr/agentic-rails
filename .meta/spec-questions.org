@@ -1,7 +1,7 @@
 #+TITLE: slot.org 0.1.1: decisions taken in agentic-rails
 #+OPTIONS: toc:nil num:nil
 
-Where =slot.org= (hub =jwalsh/context-surfaces=) left a choice, this is what
+Where =slot.org= (the hub spec) left a choice, this is what
 agentic-rails did. The hub was not edited. Ids are the spec's. These are the
 same questions the Express and Django spokes answered; where this repo chose
 differently, it says so.
@@ -58,7 +58,7 @@ Rails log lines are tagged =trace=<id>=, and the teed =server-<port>.log= has
 them too. No beacon yet.
 
 * R1: =--since=
-Epoch milliseconds, as R1 says. =--minutes N= is added for gforth-hp48's
+Epoch milliseconds, as R1 says. =--minutes N= is added for the source project's
 habit. Pass one or the other; with neither, the window is the whole file.
 Bad arguments exit 2.
 

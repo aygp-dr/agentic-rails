@@ -1,8 +1,8 @@
-#+title: Porting context surfaces from gforth-hp48 to a Rails shop
+#+title: Porting context surfaces from the source project to a Rails shop
 #+date: 2026-11-23
 
 * Why
-The owner decided (2026-11-23) to repurpose agentic-rails as the Rails home for what jwalsh/gforth-hp48 built:
+The owner decided (2026-11-23) to repurpose agentic-rails as the Rails home for what the source project built:
 - telemetry as the first priority;
 - worktree slots;
 - named runners;
@@ -13,7 +13,7 @@ The owner decided (2026-11-23) to repurpose agentic-rails as the Rails home for 
 The calculator was a vehicle. A pet shop (products, cart, checkout) is a better one: it has a genuinely
 consequential action (checkout) next to undoable ones (cart).
 
-The source of truth for the pattern is gforth-hp48's =contract/surfaces.org= and =AGENTS.md= ("A subagent run,
+The source of truth for the pattern is the source project's =contract/surfaces.org= and =AGENTS.md= ("A subagent run,
 in order"). Its .meta notes explain why each rule exists: webmcp-tools, webmcp-evals, games-research,
 subagent-process.
 
@@ -23,7 +23,7 @@ subagent-process.
 - The last commit was 2025-09-23 (an EDD guide). =worktrees/= exists.
 - *Toolchain gap:* only system Ruby 2.6.10 is installed. There's no Ruby 3.3 under asdf, mise or rbenv. Either
   install it (=asdf install ruby 3.3.8=) or run everything in Docker. The owner decides.
-- *Port clash:* compose hard-codes =3000:3000= and =5432:5432=. That is the problem gforth-hp48's slots solved,
+- *Port clash:* compose hard-codes =3000:3000= and =5432:5432=. That is the problem the source project's slots solved,
   so ports must come from a slot.
 
 * What carries over, in order
@@ -46,7 +46,7 @@ subagent-process.
    - the access log;
    - spans in OTLP-shaped JSONL (opentelemetry-ruby, written to the slot's state dir);
    - consent-gated browser events (a beacon);
-   - a domain record per action (cart and order events), standing in for gforth-inspect's =.s=/=.m=.
+   - a domain record per action (cart and order events), standing in for the source project's stack and memory inspectors.
 4. *=bin/report --since N --state DIR=*, the =bb report= equivalent. It exits 1 on any problem, and a window
    with 0 traces is a failure. Problem kinds come first:
    - =:server-error=, =:invalid-span=, =:browser-line-without-span=, =:span-without-record=;
@@ -65,7 +65,7 @@ subagent-process.
    - =shop_report= (dev).
 
    =untrustedContentHint= goes on anything that echoes user or product text. The page's tool fields are read
-   through string keys, because advanced builds renamed fields twice in gforth-hp48.
+   through string keys, because advanced builds renamed fields twice in the source project.
 7. *Tests and runners:*
    - Playwright with =BASE_URL= plus =BROWSER_STATE= (both required);
    - per-run session names, ended in =afterAll=;
@@ -85,7 +85,7 @@ subagent-process.
 
 * First steps, each a subagent run under that loop
 1. The toolchain decision, then =make check= green as the repo stands today.
-2. Slots, ports and the dev footer (=/api/build=): the same shape as gforth-hp48 PR #6.
+2. Slots, ports and the dev footer (=/api/build=): the same shape as the source project's slots.
 3. Runner identity, the spans file, and =bin/report= with 0 problems over a non-empty window.
 4. The shop: products, cart, then checkout, each with its domain record and a report oracle.
 5. The WebMCP tools, then the evals and the Bombadil properties.
