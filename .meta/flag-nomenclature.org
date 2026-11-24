@@ -51,6 +51,8 @@ has no numbered MUST/SHOULD rules, only a requirement level per attribute:
 | =feature_flag.context.id= | recommended; falls back to the targeting key | the session id |
 | =feature_flag.set.id=, =feature_flag.version= | recommended | none; the registry sha would serve as version |
 | =feature_flag.provider.name= | recommended | none (=Flipper (agentic-rails)= here) |
+Its footnote on the variant gives "on"/"off" as the example, so our path is the variant by the
+appendix's own example. Checked against the raw =appendix-d.md=.
 Names it renamed: =feature_flag.variant= became =feature_flag.result.variant=, =feature_flag.provider_name=
 became =feature_flag.provider.name=, and =feature_flag.evaluation.reason= became
 =feature_flag.result.reason=. Older guides use the old names.
