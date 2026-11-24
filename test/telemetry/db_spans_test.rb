@@ -55,7 +55,10 @@ class DbSpansTest < ActionDispatch::IntegrationTest
     assert spans.any? { _1.dig("attributes", "db.query.summary") == "INSERT orders" }
     text = File.read(traces_path)
     assert_not_includes text, SENTINEL
-    assert_not_includes text, "4242"
+    # Ids and timestamps are random hex and nanosecond digits, which contain
+    # "4242" by chance about one run in ten; the price can only leak elsewhere.
+    generated = %w[trace_id span_id parent_span_id start_time_unix_nano end_time_unix_nano]
+    spans.each { assert_not_includes _1.except(*generated).to_json, "4242" }
   end
 
   test "transaction and schema statements are not spans" do
