@@ -113,3 +113,15 @@ record per action (item 3's other logs), and the report's domain oracles.
 - Ruby 3.3 through asdf, or Docker only.
 - One Postgres with a database per slot, or a container per slot.
 - Whether =petstore-trace-lab='s span model becomes the oracle for the expected service graph.
+- Database naming beyond the repo name: today SQLite under =$XDG_STATE_HOME/agentic-rails/=, isolated per
+  slot by that variable; with Postgres, a database per slot needs a naming rule (=<name>_slot_<n>=?), not decided.
+
+* Gap: coverage before flags (2026-11-24)
+No flag exists here yet. Before the first sorry start, coverage of UI and routes has to be first class: hub
+=slot.org= "Gap: coverage is not first class yet", candidates G11-G15. For this repo that means:
+- route × flag path coverage from the spans (Rails routes dispatch at run time, so =bin/rails routes= alone
+  can't show a flag's reach), plus =Coverage= / SimpleCov on each side's files;
+- the registry names each side's files, so removing the legacy path is a deletion the gate can prove
+  (nothing else references them; coverage shows them entered only through the dispatch point);
+- dead-code detection: none yet; debride (static) and coverband (runtime) are the candidates;
+- probes use =?ff= overrides extensively; the full Playwright and Bombadil suites run on defaults only.
