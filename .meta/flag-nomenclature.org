@@ -2,7 +2,7 @@
 #+date: 2026-11-24
 
 Why this repo carries two flag libraries before it has a flagged route: to test which vocabulary the
-sorry start (hub =jwalsh/context-surfaces= =slot.org= "Flags", G1-G15) should use, against two real
+sorry start (the hub spec =slot.org= "Flags", G1-G15) should use, against two real
 ones. Flipper 1.4.2 stores the flags; OpenFeature (=openfeature-sdk= 0.5.1, the last release for
 Ruby 3.3) is the API the app evaluates through; =lib/flags/flipper_provider.rb= maps one onto the
 other, and =test/flags/flags_test.rb= pins the mapping.
@@ -32,7 +32,7 @@ other, and =test/flags/flags_test.rb= pins the mapping.
   =session= to OpenFeature would need either evaluation context fields or flag metadata; Flipper has
   neither layer and would need an actor per tab.
 - *Ours has no cohort.* Flipper's percentage and group gates and OpenFeature's targeting have no
-  sorry-start counterpart: one owner, so stage d is 0 to 100 in one step (=.meta= in gforth-hp48,
+  sorry-start counterpart: one owner, so stage d is 0 to 100 in one step (=.meta= in the source project,
   "Progressive delivery").
 - *"Variant" is the nearest word for our "path".* Using it costs nothing and makes =<p>.ff.path= an
   OpenFeature-shaped attribute.

@@ -10,7 +10,7 @@
 #            $XDG_STATE_HOME/agentic-rails (~/.local/state/agentic-rails).
 # --since    the window starts at this epoch time in milliseconds (the hub's
 #            R1 unit), and includes every span that started at or after it.
-# --minutes  the window is the last N minutes (gforth-hp48's --since unit).
+# --minutes  the window is the last N minutes (the source project's --since unit).
 #            With neither, the window is the whole file.
 #
 # Exit 0 when the window has traces and no problems; 1 on any problem and on

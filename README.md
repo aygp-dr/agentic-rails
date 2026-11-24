@@ -1,14 +1,14 @@
 # agentic-rails
 
 A small Rails pet shop used as a workshop for agentic, worktree-based development, where telemetry comes first.
-It ports what jwalsh/gforth-hp48 built:
+It ports what an earlier project built:
 - named runners, and one trace id across every log;
 - a log check that fails loudly;
 - dev-only tool endpoints;
 - Chrome WebMCP tools;
 - Playwright and Bombadil end-to-end testing.
 
-The port plan is `.meta/context-surfaces-port.org`.
+The port plan is `.meta/port-plan.org`.
 
 Bare metal: Ruby 3.3.8 pinned by asdf (`.tool-versions`), Rails 8, SQLite. The development database lives in
 `$XDG_STATE_HOME/agentic-rails/`, not in the checkout, so a worktree slot isolates its data by setting
@@ -38,7 +38,7 @@ Money is integer cents everywhere, so totals can be checked exactly.
 
 ## Telemetry
 
-The trace and report profiles of `jwalsh/context-surfaces` `slot.org` 0.1.1, attribute prefix `app`, on in every
+The trace and report profiles of the hub spec `slot.org` 0.1.1, attribute prefix `app`, on in every
 environment. The test suite points `XDG_STATE_HOME` at a temp dir, so tests never write to the owner's state.
 
 - Every request gets one server span and every response a `traceparent`. A valid W3C `traceparent` is continued;
@@ -68,5 +68,5 @@ jq -c 'select(.trace_id=="<id>")' ~/.local/state/agentic-rails/traces.jsonl
 `span-without-driver`, `trace-with-two-drivers`, `missing-parent` and `not-json`. It exits 1 on any problem and on
 a window with 0 traces.
 
-The hub gate runs from the repo root against a running server:
-`python3 ../../jwalsh/context-surfaces/gates/slot_check.py --url http://127.0.0.1:4900/ --data-dir ~/.local/state/agentic-rails --checkout $PWD --profiles dev,trace --prefix app --db-path /pets.json`.
+The hub gate runs from the repo root against a running server, with `HUB` the hub spec's checkout:
+`python3 $HUB/gates/slot_check.py --url http://127.0.0.1:4900/ --data-dir ~/.local/state/agentic-rails --checkout $PWD --profiles dev,trace --prefix app --db-path /pets.json`.
