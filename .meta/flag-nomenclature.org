@@ -35,9 +35,31 @@ other, and =test/flags/flags_test.rb= pins the mapping.
   sorry-start counterpart: one owner, so stage d is 0 to 100 in one step (=.meta= in gforth-hp48,
   "Progressive delivery").
 - *"Variant" is the nearest word for our "path".* Using it costs nothing and makes =<p>.ff.path= an
-  OpenFeature-shaped attribute; OpenFeature's own semantic conventions for flag evaluation spans use
-  =feature_flag.key=, =feature_flag.variant= and =feature_flag.provider_name= (unconfirmed for the
-  current version: check before adopting).
+  OpenFeature-shaped attribute.
+
+* OpenFeature Appendix D: the span attributes (read 2026-11-24)
+=openfeature.dev/specification/appendix-d= ("Observability") maps an evaluation onto the OpenTelemetry
+feature-flag semantic conventions, which are still in development (a release candidate, not stable). It
+has no numbered MUST/SHOULD rules, only a requirement level per attribute:
+| attribute | level | ours today (slot.org G5) |
+|-----------+-------+--------------------------|
+| =feature_flag.key= | required | the =<flag>= in =<p>.ff.<flag>= |
+| =feature_flag.result.variant= | conditionally required: whenever the provider gives one | =<p>.ff.path= (=on= / =off=) |
+| =feature_flag.result.value= | conditionally required when there is no variant | the effective value |
+| =feature_flag.result.reason= | recommended; lowercase snake_case (=static=, =targeting_match=) | none: our =source= is a different question |
+| =error.type=, =error.message= | conditionally required: on error | none |
+| =feature_flag.context.id= | recommended; falls back to the targeting key | the session id |
+| =feature_flag.set.id=, =feature_flag.version= | recommended | none; the registry sha would serve as version |
+| =feature_flag.provider.name= | recommended | none (=Flipper (agentic-rails)= here) |
+Names it renamed: =feature_flag.variant= became =feature_flag.result.variant=, =feature_flag.provider_name=
+became =feature_flag.provider.name=, and =feature_flag.evaluation.reason= became
+=feature_flag.result.reason=. Older guides use the old names.
+How it emits them: by hooks, preferably as a span event on the active span (no new span); an event log
+and a standalone span per evaluation (named =feature_flag.evaluation=) are the alternatives. The
+=finally= stage emits them; a hook must never throw into the evaluation. Metrics aren't covered.
+Consequence: one span event per evaluation shaped like that, plus our =<p>.ff.<flag>.source= (no
+OpenFeature equivalent), would let a standard backend read our flags without losing the sorry start's
+own fields. The shape is still in development, so pin it to a semconv version.
 
 * Open
 - Flipper's memory adapter: overrides vanish on restart and nothing is written to the state dir.
