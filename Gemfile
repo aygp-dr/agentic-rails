@@ -34,3 +34,8 @@ group :test do
   gem "capybara"
   gem "selenium-webdriver"
 end
+
+# Feature flags: Flipper stores them (features, gates, actors); OpenFeature evaluates them
+# (flag keys, evaluation context, providers). Both kept so their nomenclatures can be compared.
+gem "flipper", "~> 1.4"
+gem "openfeature-sdk", "~> 0.5.1", require: "open_feature/sdk" # 0.6+ needs Ruby 3.4; the repo pins 3.3.8

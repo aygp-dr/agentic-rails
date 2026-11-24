@@ -99,6 +99,8 @@ GEM
     drb (2.2.3)
     erb (6.0.7)
     erubi (1.13.1)
+    flipper (1.4.2)
+      concurrent-ruby (< 2)
     globalid (1.4.0)
       activesupport (>= 6.1)
     i18n (1.15.2)
@@ -156,6 +158,7 @@ GEM
       racc (~> 1.4)
     nokogiri (1.19.7-x86_64-linux-musl)
       racc (~> 1.4)
+    openfeature-sdk (0.5.1)
     pp (0.6.4)
       prettyprint
     prettyprint (0.2.1)
@@ -278,7 +281,9 @@ DEPENDENCIES
   bootsnap
   capybara
   debug
+  flipper (~> 1.4)
   importmap-rails
+  openfeature-sdk (~> 0.5.1)
   propshaft
   puma (>= 5.0)
   rails (~> 8.0.5, >= 8.0.5.2)
@@ -315,6 +320,7 @@ CHECKSUMS
   drb (2.2.3) sha256=0b00d6fdb50995fe4a45dea13663493c841112e4068656854646f418fda13373
   erb (6.0.7) sha256=c5ca6dc25b0ef974a44dc8f59fe847577122483b1968a38dec305c60bf91ee92
   erubi (1.13.1) sha256=a082103b0885dbc5ecf1172fede897f9ebdb745a4b97a5e8dc63953db1ee4ad9
+  flipper (1.4.2) sha256=dca7d65b5ec660b525b6c599e727219ac4994073c855b41b6656b2d91a9cb304
   globalid (1.4.0) sha256=037f12fbf1d9d7a014d501c2d5c77356fd4ddd96d7a7991d6700bba96706f427
   i18n (1.15.2) sha256=00f9eb62412fe593b2a65a97daa75300d37abb8f7202ec748e94b6d46a9dd1b5
   importmap-rails (2.2.3) sha256=7101be2a4dc97cf1558fb8f573a718404c5f6bcfe94f304bf1f39e444feeb16a
@@ -341,6 +347,7 @@ CHECKSUMS
   nokogiri (1.19.7-x86_64-darwin) sha256=508e81e8c5f84aaa240dce981bf1c43faae60808726f0ce7024ee92effc5cafe
   nokogiri (1.19.7-x86_64-linux-gnu) sha256=25865ccb462f714e712fdf8906fde07849cb6704a808e3d629d75baa5af5dd3b
   nokogiri (1.19.7-x86_64-linux-musl) sha256=464d1f3dfb0d53cf54c0c6a7e23e8e91cf68ec3cafc2b27dc4a7682f2d9bf546
+  openfeature-sdk (0.5.1) sha256=cea3e9a085778ee5f8c2b9daba20bffd9bdafb4240521de03694369b86aa7259
   pp (0.6.4) sha256=dfcb0fce700c41456265922884f9fe195d7fbb0674a3578e6c0f69588e82b570
   prettyprint (0.2.1) sha256=d555d57ea6d7cf001d4774b693546a6bd88bec1e778ddffb5c60b68ceec4b7d4
   prism (2.1.0-aarch64-linux-gnu) sha256=808dddc72def68e1a0463689414c97e0ba211938eddbab05387a4844aa2b3ec2
