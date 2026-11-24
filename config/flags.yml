@@ -1,0 +1,10 @@
+# The flag registry (jwalsh/context-surfaces slot.org G1): one entry per flag.
+# Flipper holds the overrides (gates); this file holds what Flipper has no word for:
+# the sorry-start stage, the default, and the reach (routes, fixed at stage a, G8).
+# probe is test-only: it exercises the flag machinery and never dispatches a route.
+- name: probe
+  stage: a
+  default: "off"
+  routes: []
+  owner: tests
+  since: "2026-11-24"

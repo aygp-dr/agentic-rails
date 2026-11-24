@@ -1,0 +1,49 @@
+#+title: Flag nomenclature: the sorry start, OpenFeature and Flipper
+#+date: 2026-11-24
+
+Why this repo carries two flag libraries before it has a flagged route: to test which vocabulary the
+sorry start (hub =jwalsh/context-surfaces= =slot.org= "Flags", G1-G15) should use, against two real
+ones. Flipper 1.4.2 stores the flags; OpenFeature (=openfeature-sdk= 0.5.1, the last release for
+Ruby 3.3) is the API the app evaluates through; =lib/flags/flipper_provider.rb= maps one onto the
+other, and =test/flags/flags_test.rb= pins the mapping.
+
+* One concept, three names
+| concept | sorry start (slot.org) | OpenFeature | Flipper | here |
+|---------+------------------------+-------------+---------+------|
+| the thing switched | flag | flag (flag key) | feature | registry name = flag key = feature key |
+| where flags are listed | registry (G1) | none: the provider owns it | adapter's feature set | =config/flags.yml= |
+| what answers a lookup | the flags module | provider, behind a client | the Flipper instance + adapter | =Flags::FlipperProvider= |
+| who is asking | the tab's session, the runner | evaluation context, targeting key | actor (=flipper_id=) | targeting key → actor |
+| a cohort | none | targeting rules (provider's) | group, percentage of actors / time, expression | not used |
+| the answer | effective value | resolution details: value, variant, reason | =enabled?= | value plus variant |
+| which side served | path, =on= / =off= (G5 =<p>.ff.path=) | variant | none | variant ="on"= / ="off"= |
+| why it has that value | source: url, session, saved, default (G2, G5) | reason: STATIC, DEFAULT, TARGETING_MATCH, SPLIT, CACHED, DISABLED, STALE, UNKNOWN, ERROR | gate that matched; state on / off / conditional | DEFAULT, STATIC, TARGETING_MATCH |
+| where it is in its life | stage a-e | none | none | registry =stage= |
+| what it touches | reach, routes (G8) | none | none | registry =routes= |
+| what it shows before the feature | the sorry div (G4) | none | none | not built yet |
+| per-call side effects | the span attributes (G5) | hooks: before, after, error, finally | instrumentation (ActiveSupport notifications) | not wired yet |
+
+* What each vocabulary is missing
+- *Neither library has the lifecycle.* Stage, reach and the placeholder are the sorry start's own: no
+  field in OpenFeature or Flipper for "stage b", "routes" or "default on only from d". So the registry
+  stays a file in the repo next to whichever library holds the overrides.
+- *Neither has our source.* OpenFeature's reason says how a provider decided (a rule, a default, a
+  static value), not which layer the override came from (URL, tab session, saved). Mapping our =url= and
+  =session= to OpenFeature would need either evaluation context fields or flag metadata; Flipper has
+  neither layer and would need an actor per tab.
+- *Ours has no cohort.* Flipper's percentage and group gates and OpenFeature's targeting have no
+  sorry-start counterpart: one owner, so stage d is 0 to 100 in one step (=.meta= in gforth-hp48,
+  "Progressive delivery").
+- *"Variant" is the nearest word for our "path".* Using it costs nothing and makes =<p>.ff.path= an
+  OpenFeature-shaped attribute; OpenFeature's own semantic conventions for flag evaluation spans use
+  =feature_flag.key=, =feature_flag.variant= and =feature_flag.provider_name= (unconfirmed for the
+  current version: check before adopting).
+
+* Open
+- Flipper's memory adapter: overrides vanish on restart and nothing is written to the state dir.
+  =flipper-active_record= would put them in each slot's SQLite (per-slot by =XDG_STATE_HOME=), at the
+  cost of a migration.
+- The =?ff== URL and tab-session layers (G2) aren't built: they'd be an evaluation-context field read
+  by the provider before Flipper's gates.
+- Spans don't carry flags yet (G5): an OpenFeature hook is the natural place, and the nomenclature
+  choice above decides the attribute names (=app.ff.<flag>= or =feature_flag.*=).
