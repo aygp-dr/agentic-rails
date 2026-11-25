@@ -109,12 +109,17 @@ Not done: =slot.json= (C1, part of =core=, comes with slots), =sql.jsonl=
 (T10 MAY; the dev log shows the statements as sent), the beacon and the domain
 record per action (item 3's other logs), and the report's domain oracles.
 
-* Open, the owner's calls
-- Ruby 3.3 through asdf, or Docker only.
-- One Postgres with a database per slot, or a container per slot.
-- Whether =petstore-trace-lab='s span model becomes the oracle for the expected service graph.
-- Database naming beyond the repo name: today SQLite under =$XDG_STATE_HOME/agentic-rails/=, isolated per
-  slot by that variable; with Postgres, a database per slot needs a naming rule (=<name>_slot_<n>=?), not decided.
+* Best guesses (2026-11-24)
+The owner asked for best guesses over escalation here: this repo explores where the contract runs out. Each
+guess says what would change it.
+- *Toolchain:* Ruby 3.3.8 through asdf, settled by step 1. Docker stays out until a container target needs it.
+- *Database per slot:* SQLite, one file per slot, isolated by =XDG_STATE_HOME= alone (hub C6). No Postgres, so
+  no per-slot naming rule. Revisit if a feature needs concurrent writers SQLite can't serve.
+- *Oracle for the service graph:* a sibling lab's span model (declared edges vs edges seen in spans) is a
+  reference, not the oracle. The oracles stay in =bin/report=, recomputed from this app's own records (cart
+  totals, order vs cart, one checkout per idempotency key). Revisit if a second service appears.
+- *Restarting main:* when 4900 is down, restart it in a detached tmux session, rerun a traced probe and renew
+  the port registry's pid; done 2026-11-24 23:32 after the session was killed around 11:00.
 
 * Gap: coverage before flags (2026-11-24)
 No flag exists here yet. Before the first sorry start, coverage of UI and routes has to be first class: hub
